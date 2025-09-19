@@ -1,0 +1,32 @@
+# test_openai_api.py
+import os
+from dotenv import load_dotenv
+from openai import AzureOpenAI
+
+load_dotenv()
+
+azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")   # e.g. https://eastus.api.cognitive.microsoft.com/
+api_key        = os.getenv("AZURE_OPENAI_API_KEY")    # from Keys & Endpoint
+deployment     = os.getenv("AZURE_OPENAI_DEPLOYMENT") # EXACT deployment name in the portal, e.g. gpt-5-mini
+
+assert azure_endpoint and api_key and deployment, "Missing AZURE_OPENAI_* env vars"
+
+client = AzureOpenAI(
+    api_key=api_key,
+    api_version="2024-12-01-preview",
+    azure_endpoint=azure_endpoint,   # NOTE: cognitive.microsoft.com endpoint, not openai.azure.com
+)
+
+# either Responses API…
+# resp = client.responses.create(model=deployment, input="Say: Connected to Azure OpenAI (gpt-5-mini)!")
+
+# …or Chat Completions (both work for this model)
+resp = client.chat.completions.create(
+    model=deployment,  # must match deployment name exactly
+    messages=[
+        {"role": "system", "content": "You are a connection test."},
+        {"role": "user", "content": "Reply with: Connected to Azure OpenAI (gpt-5-mini)!"}
+    ],
+)
+
+print("✅ Success:", resp.choices[0].message.content)
