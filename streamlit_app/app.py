@@ -30,6 +30,7 @@ sys.path.append(str(Path(__file__).parent / "services"))
 from sow_extraction_service import SOWExtractionService, ExtractionProgress
 from azure_search_service import get_search_service
 from vector_search_service import get_vector_search_service
+from hybrid_search_service import get_hybrid_search_service
 
 
 # Page configuration
@@ -99,6 +100,80 @@ def process_uploaded_file(uploaded_file, progress_bar, status_text):
     except Exception as e:
         st.error(f"Error processing file: {e}")
         return None
+
+
+def generate_sow_recommendations(sow_data, client_filter="All Clients", length_filter="All Lengths", top=3):
+    """Generate recommendations based on similar historical SOWs"""
+    try:
+        # Initialize vector search service
+        vector_search_service = get_vector_search_service()
+        
+        # Create search query from SOW data
+        search_parts = []
+        
+        # Add client name if available
+        if sow_data.get('client_name'):
+            search_parts.append(sow_data['client_name'])
+        
+        # Add project title
+        if sow_data.get('project_title'):
+            search_parts.append(sow_data['project_title'])
+        
+        # Add scope summary (first 500 chars)
+        if sow_data.get('scope_summary'):
+            search_parts.append(sow_data['scope_summary'][:500])
+        
+        # Add deliverables (first few)
+        if sow_data.get('deliverables'):
+            search_parts.extend(sow_data['deliverables'][:3])
+        
+        # Combine into search query
+        search_query = " ".join(search_parts)
+        
+        # Build filter expression
+        filter_parts = []
+        if client_filter != "All Clients":
+            filter_parts.append(f"client_name eq '{client_filter}'")
+        if length_filter != "All Lengths":
+            filter_parts.append(f"project_length eq '{length_filter}'")
+        
+        filter_expression = " and ".join(filter_parts) if filter_parts else None
+        
+        # Perform vector search
+        results = vector_search_service.vector_search(
+            query=search_query,
+            top=top * 2,  # Get more results to filter
+            filter_expression=filter_expression
+        )
+        
+        if results and 'value' in results:
+            # Filter out low-relevance results and format
+            formatted_results = []
+            for doc in results['value']:
+                score = doc.get('@search.score', 0.0)
+                if score >= 0.3:  # Only include results with decent relevance
+                    formatted_results.append({
+                        'client_name': doc.get('client_name', 'Unknown'),
+                        'project_title': doc.get('project_title', 'No title'),
+                        'scope_summary': doc.get('scope_summary', 'No summary'),
+                        'deliverables': doc.get('deliverables', []),
+                        'staffing_plan': doc.get('staffing_plan', []),
+                        'start_date': doc.get('start_date', ''),
+                        'end_date': doc.get('end_date', ''),
+                        'project_length': doc.get('project_length', ''),
+                        'file_name': doc.get('file_name', ''),
+                        'extraction_timestamp': doc.get('extraction_timestamp', ''),
+                        'relevance_score': score
+                    })
+            
+            # Return top N results
+            return formatted_results[:top]
+        
+        return []
+        
+    except Exception as e:
+        st.error(f"Error generating recommendations: {e}")
+        return []
 
 
 def main():
@@ -278,13 +353,213 @@ def main():
     
     with tab2:
         st.header("🤖 Upload SOW (no staffing plan) → Recommendation")
-        st.markdown("Upload a SOW without staffing information to get AI-powered recommendations.")
+        st.markdown("Upload a SOW without staffing information to get AI-powered recommendations based on similar historical SOWs.")
         
-        st.info("🚧 **Coming Soon!** This feature will provide:\n"
-               "- Rules-based baseline staffing recommendations\n"
-               "- LLM fine-tuning for specific project needs\n"
-               "- Interactive sliders to adjust assumptions\n"
-               "- One-pager summary with justification")
+        # Initialize session state for this tab
+        if 'uploaded_sow_data' not in st.session_state:
+            st.session_state.uploaded_sow_data = None
+        if 'similar_sows' not in st.session_state:
+            st.session_state.similar_sows = []
+        
+        # File upload section
+        st.subheader("📤 Upload SOW Document")
+        uploaded_file = st.file_uploader(
+            "Choose a SOW file (PDF or DOCX)",
+            type=['pdf', 'docx'],
+            help="Upload a SOW document to get recommendations based on similar historical projects",
+            key="recommend_upload"
+        )
+        
+        if uploaded_file is not None:
+            # Process the uploaded file
+            if st.button("🚀 Process & Extract Data", type="primary"):
+                # Create progress indicators
+                progress_bar = st.progress(0)
+                status_text = st.text("Initializing...")
+                
+                # Process the file using existing extraction service
+                with st.spinner("Processing SOW..."):
+                    result = process_uploaded_file(uploaded_file, progress_bar, status_text)
+                
+                if result and result.success:
+                    st.success("✅ SOW processed successfully!")
+                    st.session_state.uploaded_sow_data = result.data
+                    
+                    # Display extracted data for review
+                    st.subheader("📊 Extracted SOW Data")
+                    
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        st.markdown("**Basic Information**")
+                        st.write(f"**Client:** {result.data.get('client_name', 'N/A')}")
+                        st.write(f"**Project:** {result.data.get('project_title', 'N/A')}")
+                        st.write(f"**Duration:** {result.data.get('project_length', 'N/A')}")
+                        st.write(f"**Start Date:** {result.data.get('start_date', 'N/A')}")
+                        st.write(f"**End Date:** {result.data.get('end_date', 'N/A')}")
+                    
+                    with col2:
+                        st.markdown("**Project Details**")
+                        st.write(f"**Deliverables:** {len(result.data.get('deliverables', []))} items")
+                        st.write(f"**Exclusions:** {len(result.data.get('exclusions', []))} items")
+                        st.write(f"**Processing Time:** {result.processing_time:.2f}s")
+                    
+                    # Scope Summary
+                    if result.data.get('scope_summary'):
+                        st.markdown("**Scope Summary:**")
+                        st.write(result.data['scope_summary'])
+                    
+                    # Deliverables
+                    if result.data.get('deliverables'):
+                        st.markdown("**Deliverables:**")
+                        for i, deliverable in enumerate(result.data['deliverables'], 1):
+                            st.write(f"{i}. {deliverable}")
+                    
+                    # Exclusions
+                    if result.data.get('exclusions'):
+                        st.markdown("**Exclusions:**")
+                        for i, exclusion in enumerate(result.data['exclusions'], 1):
+                            st.write(f"{i}. {exclusion}")
+                    
+                    # Show button to proceed to recommendations
+                    st.markdown("---")
+                    if st.button("🔍 Find Similar Historical SOWs", type="primary"):
+                        st.rerun()
+                
+                else:
+                    st.error("❌ Failed to process SOW")
+                    if result:
+                        st.error(f"Error: {result.error}")
+        
+        # Similar SOWs recommendation section
+        if st.session_state.uploaded_sow_data:
+            st.markdown("---")
+            st.subheader("🔍 Similar Historical SOWs")
+            
+            # Filtering options
+            with st.expander("🔧 Filter Options", expanded=False):
+                filter_col1, filter_col2 = st.columns(2)
+                
+                with filter_col1:
+                    # Get unique clients from search service
+                    try:
+                        search_service = get_search_service()
+                        clients = search_service.get_unique_clients()
+                        selected_client_filter = st.selectbox(
+                            "Filter by Client",
+                            ["All Clients"] + clients,
+                            help="Filter similar SOWs by client"
+                        )
+                    except:
+                        selected_client_filter = "All Clients"
+                
+                with filter_col2:
+                    # Project length filter
+                    try:
+                        search_service = get_search_service()
+                        lengths = search_service.get_unique_project_lengths()
+                        selected_length_filter = st.selectbox(
+                            "Filter by Project Length",
+                            ["All Lengths"] + lengths,
+                            help="Filter similar SOWs by project duration"
+                        )
+                    except:
+                        selected_length_filter = "All Lengths"
+            
+            # Generate recommendations button
+            if st.button("🎯 Generate Recommendations", type="primary"):
+                with st.spinner("Finding similar historical SOWs..."):
+                    # Generate recommendations using vector search
+                    recommendations = generate_sow_recommendations(
+                        st.session_state.uploaded_sow_data,
+                        client_filter=selected_client_filter,
+                        length_filter=selected_length_filter
+                    )
+                    
+                    if recommendations:
+                        st.session_state.similar_sows = recommendations
+                        st.success(f"✅ Found {len(recommendations)} similar historical SOWs")
+                    else:
+                        st.warning("⚠️ No similar SOWs found. Try adjusting your filters.")
+                        st.session_state.similar_sows = []
+            
+            # Display recommendations
+            if st.session_state.similar_sows:
+                st.markdown("---")
+                st.subheader(f"📋 Top {len(st.session_state.similar_sows)} Similar SOWs")
+                
+                for i, similar_sow in enumerate(st.session_state.similar_sows, 1):
+                    confidence_score = similar_sow.get('relevance_score', 0.0)
+                    
+                    with st.expander(f"#{i} {similar_sow['client_name']} - {similar_sow['project_title']} (Confidence: {confidence_score:.2f})", expanded=(i==1)):
+                        # Basic info
+                        info_col1, info_col2, info_col3 = st.columns(3)
+                        
+                        with info_col1:
+                            st.write(f"**Client:** {similar_sow['client_name']}")
+                            st.write(f"**Duration:** {similar_sow['project_length']}")
+                            st.write(f"**File:** {similar_sow['file_name']}")
+                        
+                        with info_col2:
+                            st.write(f"**Start Date:** {similar_sow['start_date']}")
+                            st.write(f"**End Date:** {similar_sow['end_date']}")
+                            extraction_time = similar_sow.get('extraction_timestamp', '')
+                            if extraction_time:
+                                st.write(f"**Extracted:** {extraction_time}")
+                        
+                        with info_col3:
+                            deliverables_count = len(similar_sow.get('deliverables', []))
+                            staffing_count = len(similar_sow.get('staffing_plan', []))
+                            st.write(f"**Deliverables:** {deliverables_count} items")
+                            st.write(f"**Staffing:** {staffing_count} people")
+                            st.write(f"**Similarity:** {confidence_score:.2f}")
+                        
+                        # Scope summary
+                        scope_summary = similar_sow.get('scope_summary', '')
+                        if scope_summary:
+                            st.markdown("**Scope Summary:**")
+                            st.write(scope_summary[:500] + "..." if len(scope_summary) > 500 else scope_summary)
+                        
+                        # Deliverables
+                        deliverables = similar_sow.get('deliverables', [])
+                        if deliverables:
+                            st.markdown("**Deliverables:**")
+                            for j, deliverable in enumerate(deliverables[:5], 1):  # Show first 5
+                                st.write(f"{j}. {deliverable}")
+                            if len(deliverables) > 5:
+                                st.write(f"... and {len(deliverables) - 5} more")
+                        
+                        # Staffing plan (this is what we're recommending from)
+                        staffing_plan = similar_sow.get('staffing_plan', [])
+                        if staffing_plan:
+                            st.markdown("**Staffing Plan (Recommendation Source):**")
+                            staffing_df = pd.DataFrame(staffing_plan)
+                            st.dataframe(staffing_df, use_container_width=True)
+                        else:
+                            st.info("No staffing plan available in this historical SOW")
+        
+        # Information section
+        st.markdown("---")
+        with st.expander("ℹ️ How Recommendations Work", expanded=False):
+            st.markdown("""
+            **Recommendation Process:**
+            1. **Upload & Extract**: Your SOW is processed to extract structured data (client, project details, deliverables, etc.)
+            2. **Vector Embedding**: The extracted content is converted to AI embeddings for semantic comparison
+            3. **Similarity Search**: We search our historical SOW database to find the most similar projects
+            4. **Recommendations**: The top 3 most similar SOWs are displayed with their staffing plans as recommendations
+            
+            **Similarity Factors:**
+            - Project scope and deliverables
+            - Client industry and type
+            - Project duration and complexity
+            - Technology and methodology used
+            
+            **Using Recommendations:**
+            - Review the staffing plans from similar historical SOWs
+            - Consider the similarity scores (higher = more relevant)
+            - Adapt the recommended staffing to your specific project needs
+            - Download individual recommendations for detailed review
+            """)
     
     with tab3:
         st.header("🔍 Search Historical SOWs")
@@ -337,8 +612,8 @@ def main():
             # Search method selection
             search_method = st.radio(
                 "🔍 Search Method",
-                ["Vector Search (Semantic)", "Basic Search"],
-                help="Choose your search method: Vector for semantic understanding, Basic for exact keyword matches"
+                ["Hybrid Search (Full Text + Parsed)", "Vector Search (Semantic)", "Basic Search"],
+                help="Choose your search method: Hybrid combines full text and parsed data, Vector uses parsed data only, Basic for exact keyword matches"
             )
             
             # Additional options
@@ -417,7 +692,48 @@ def main():
                     filter_expression = " and ".join(filter_parts) if filter_parts else None
                     
                     # Perform search based on selected method
-                    if search_method == "Vector Search (Semantic)":
+                    if search_method == "Hybrid Search (Full Text + Parsed)":
+                        # Initialize hybrid search service
+                        hybrid_search_service = get_hybrid_search_service()
+                        results = hybrid_search_service.hybrid_vector_search(
+                            query=search_query,
+                            top=50,
+                            filter_expression=filter_expression
+                        )
+                        
+                        # Filter out low-relevance results (threshold: 0.01 for hybrid)
+                        if results and 'value' in results:
+                            filtered_results = []
+                            for doc in results['value']:
+                                score = doc.get('@search.score', 0.0)
+                                if score >= 0.01:  # Lower threshold for hybrid search
+                                    filtered_results.append(doc)
+                            results['value'] = filtered_results
+                        if results and 'value' in results:
+                            # Format results for display
+                            formatted_results = []
+                            for doc in results['value']:
+                                formatted_results.append({
+                                    'client_name': doc.get('client_name', 'Unknown'),
+                                    'project_title': doc.get('project_title', 'No title'),
+                                    'scope_summary': doc.get('scope_summary', 'No summary'),
+                                    'deliverables': doc.get('deliverables', []),
+                                    'staffing_plan': doc.get('staffing_plan', []),
+                                    'start_date': doc.get('start_date', ''),
+                                    'end_date': doc.get('end_date', ''),
+                                    'project_length': doc.get('project_length', ''),
+                                    'file_name': doc.get('file_name', ''),
+                                    'extraction_timestamp': doc.get('extraction_timestamp', ''),
+                                    'raw_content': doc.get('raw_content', ''),
+                                    'search_strategy': doc.get('search_strategy', 'hybrid_vector_search'),
+                                    'relevance_score': doc.get('@search.score', 0.0)
+                                })
+                            st.session_state.search_results = formatted_results
+                        else:
+                            st.error("❌ Hybrid search failed. Please check your query and try again.")
+                            st.session_state.search_results = []
+                    
+                    elif search_method == "Vector Search (Semantic)":
                         # Initialize vector search service
                         vector_search_service = get_vector_search_service()
                         results = vector_search_service.vector_search(
@@ -519,6 +835,12 @@ def main():
                             st.markdown("**Scope Summary:**")
                             st.write(scope_summary[:500] + "..." if len(scope_summary) > 500 else scope_summary)
                         
+                        # Raw content (for hybrid search)
+                        raw_content = result.get('raw_content', '')
+                        if raw_content and search_method == "Hybrid Search (Full Text + Parsed)":
+                            st.markdown("**Full Document Content:**")
+                            st.write(raw_content[:1000] + "..." if len(raw_content) > 1000 else raw_content)
+                        
                         # Deliverables preview
                         deliverables = result.get('deliverables', [])
                         if deliverables:
@@ -585,12 +907,18 @@ def main():
             st.markdown("---")
             with st.expander("🔍 About Search Methods", expanded=False):
                 st.markdown("""
-                **Vector Search (Semantic)**: 
-                - Uses AI embeddings to understand meaning and context
-                - Best for conceptual searches (e.g., "golf related events" finds Masters programs)
-                - Handles synonyms and related concepts automatically
-                - Most accurate for complex queries
+                **Hybrid Search (Full Text + Parsed)**: 
+                - Combines full document text with structured parsed data
+                - Uses AI embeddings for both raw content and parsed fields
+                - Most comprehensive search - finds details in original documents
+                - Best for complex conceptual searches
                 - **Recommended for most searches**
+                
+                **Vector Search (Semantic)**: 
+                - Uses AI embeddings on structured parsed data only
+                - Good for conceptual searches with clean, organized results
+                - Handles synonyms and related concepts automatically
+                - Faster than hybrid search
                 
                 **Basic Search**:
                 - Traditional keyword matching using Azure Search
@@ -603,30 +931,27 @@ def main():
             st.markdown("---")
             st.subheader("💡 Quick Search Suggestions")
             
-            suggestion_col1, suggestion_col2, suggestion_col3 = st.columns(3)
+            suggestion_col1, suggestion_col2, suggestion_col3, suggestion_col4 = st.columns(4)
             
             with suggestion_col1:
-                if st.button("🔍 All SOWs", use_container_width=True):
-                    st.session_state.search_results = search_service.format_search_results(
-                        search_service.get_all_documents()
-                    )
+                if st.button("🏌️ Golf Events", use_container_width=True):
+                    st.session_state.search_query = "golf related events"
                     st.rerun()
             
             with suggestion_col2:
-                if st.button("🏢 All Clients", use_container_width=True):
-                    clients = search_service.get_unique_clients()
-                    st.write("**Available Clients:**")
-                    for client in clients:
-                        st.write(f"• {client}")
+                if st.button("🏨 Hospitality", use_container_width=True):
+                    st.session_state.search_query = "hospitality programs"
+                    st.rerun()
             
             with suggestion_col3:
-                if st.button("📊 Index Stats", use_container_width=True):
-                    stats = search_service.get_stats()
-                    st.write("**Index Statistics:**")
-                    st.write(f"• Total Documents: {stats['total_documents']}")
-                    st.write(f"• Unique Clients: {stats['clients']}")
-                    if stats['date_range']:
-                        st.write(f"• Date Range: {stats['date_range']['earliest']} to {stats['date_range']['latest']}")
+                if st.button("📅 August Events", use_container_width=True):
+                    st.session_state.search_query = "august tournament"
+                    st.rerun()
+            
+            with suggestion_col4:
+                if st.button("📊 All SOWs", use_container_width=True):
+                    st.session_state.search_query = "*"
+                    st.rerun()
         
         except Exception as e:
             st.error(f"❌ Error initializing search service: {e}")
