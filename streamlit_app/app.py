@@ -29,6 +29,7 @@ sys.path.append(str(Path(__file__).parent / "services"))
 
 from sow_extraction_service import SOWExtractionService, ExtractionProgress
 from azure_search_service import get_search_service
+from vector_search_service import get_vector_search_service
 
 
 # Page configuration
@@ -333,6 +334,28 @@ def main():
                     help="Choose which fields to search"
                 )
             
+            # Search method selection
+            search_method = st.radio(
+                "🔍 Search Method",
+                ["Vector Search (Semantic)", "Basic Search"],
+                help="Choose your search method: Vector for semantic understanding, Basic for exact keyword matches"
+            )
+            
+            # Additional options
+            col_options1, col_options2 = st.columns(2)
+            with col_options1:
+                show_strategy = st.checkbox(
+                    "📊 Show Search Strategy", 
+                    value=True,
+                    help="Show which search strategy found each result"
+                )
+            with col_options2:
+                show_scores = st.checkbox(
+                    "📈 Show Relevance Scores", 
+                    value=True,
+                    help="Show relevance scores for each result"
+                )
+            
             # Advanced filters
             with st.expander("🔧 Advanced Filters", expanded=False):
                 filter_col1, filter_col2, filter_col3 = st.columns(3)
@@ -393,19 +416,59 @@ def main():
                     
                     filter_expression = " and ".join(filter_parts) if filter_parts else None
                     
-                    # Perform search
-                    results = search_service.search(
-                        query=search_query,
-                        search_fields=search_fields,
-                        filter_expression=filter_expression,
-                        top=50
-                    )
+                    # Perform search based on selected method
+                    if search_method == "Vector Search (Semantic)":
+                        # Initialize vector search service
+                        vector_search_service = get_vector_search_service()
+                        results = vector_search_service.vector_search(
+                            query=search_query,
+                            top=50,
+                            filter_expression=filter_expression
+                        )
+                        
+                        # Filter out low-relevance results (threshold: 0.3)
+                        if results and 'value' in results:
+                            filtered_results = []
+                            for doc in results['value']:
+                                score = doc.get('@search.score', 0.0)
+                                if score >= 0.3:  # Only show results with decent relevance
+                                    filtered_results.append(doc)
+                            results['value'] = filtered_results
+                        if results and 'value' in results:
+                            # Format results for display
+                            formatted_results = []
+                            for doc in results['value']:
+                                formatted_results.append({
+                                    'client_name': doc.get('client_name', 'Unknown'),
+                                    'project_title': doc.get('project_title', 'No title'),
+                                    'scope_summary': doc.get('scope_summary', 'No summary'),
+                                    'deliverables': doc.get('deliverables', []),
+                                    'staffing_plan': doc.get('staffing_plan', []),
+                                    'start_date': doc.get('start_date', ''),
+                                    'end_date': doc.get('end_date', ''),
+                                    'project_length': doc.get('project_length', ''),
+                                    'file_name': doc.get('file_name', ''),
+                                    'extraction_timestamp': doc.get('extraction_timestamp', ''),
+                                    'search_strategy': doc.get('search_strategy', 'vector_search'),
+                                    'relevance_score': doc.get('@search.score', 0.0)
+                                })
+                            st.session_state.search_results = formatted_results
+                        else:
+                            st.error("❌ Vector search failed. Please check your query and try again.")
+                            st.session_state.search_results = []
                     
-                    if results:
-                        st.session_state.search_results = search_service.format_search_results(results)
-                    else:
-                        st.error("❌ Search failed. Please check your query and try again.")
-                        st.session_state.search_results = []
+                    else:  # Basic Search
+                        results = search_service.search(
+                            query=search_query,
+                            search_fields=search_fields,
+                            filter_expression=filter_expression,
+                            top=50
+                        )
+                        if results:
+                            st.session_state.search_results = search_service.format_search_results(results)
+                        else:
+                            st.error("❌ Search failed. Please check your query and try again.")
+                            st.session_state.search_results = []
             
             # Display results
             if st.session_state.search_results:
@@ -419,7 +482,14 @@ def main():
                 
                 # Display each result
                 for i, result in enumerate(st.session_state.search_results):
-                    with st.expander(f"📋 {result['client_name']} - {result['project_title']}", expanded=False):
+                    # Create expander title with search strategy info
+                    expander_title = f"📋 {result['client_name']} - {result['project_title']}"
+                    if show_strategy and 'search_strategy' in result:
+                        strategy = result['search_strategy']
+                        score = result.get('strategy_score', result.get('relevance_score', 0.0))
+                        expander_title += f" [{strategy} - {score:.2f}]"
+                    
+                    with st.expander(expander_title, expanded=False):
                         # Basic info
                         info_col1, info_col2, info_col3 = st.columns(3)
                         
@@ -431,32 +501,41 @@ def main():
                         with info_col2:
                             st.write(f"**Start Date:** {result['start_date']}")
                             st.write(f"**End Date:** {result['end_date']}")
-                            st.write(f"**Extracted:** {result['extraction_timestamp']}")
+                            extraction_time = result.get('extraction_timestamp', '')
+                            if extraction_time:
+                                st.write(f"**Extracted:** {extraction_time}")
                         
                         with info_col3:
-                            st.write(f"**Deliverables:** {result['deliverables_count']} items")
-                            st.write(f"**Staffing:** {result['staffing_count']} people")
+                            deliverables_count = len(result.get('deliverables', []))
+                            staffing_count = len(result.get('staffing_plan', []))
+                            st.write(f"**Deliverables:** {deliverables_count} items")
+                            st.write(f"**Staffing:** {staffing_count} people")
+                            if show_scores and 'relevance_score' in result:
+                                st.write(f"**Relevance Score:** {result['relevance_score']:.2f}")
                         
                         # Scope summary
-                        if result['scope_summary_preview']:
+                        scope_summary = result.get('scope_summary', '')
+                        if scope_summary:
                             st.markdown("**Scope Summary:**")
-                            st.write(result['scope_summary_preview'])
+                            st.write(scope_summary[:500] + "..." if len(scope_summary) > 500 else scope_summary)
                         
                         # Deliverables preview
-                        if result['deliverables_preview']:
+                        deliverables = result.get('deliverables', [])
+                        if deliverables:
                             st.markdown("**Deliverables (first 3):**")
-                            for j, deliverable in enumerate(result['deliverables_preview'], 1):
+                            for j, deliverable in enumerate(deliverables[:3], 1):
                                 st.write(f"{j}. {deliverable}")
-                            if result['deliverables_count'] > 3:
-                                st.write(f"... and {result['deliverables_count'] - 3} more")
+                            if deliverables_count > 3:
+                                st.write(f"... and {deliverables_count - 3} more")
                         
                         # Staffing preview
-                        if result['staffing_preview']:
+                        staffing_plan = result.get('staffing_plan', [])
+                        if staffing_plan:
                             st.markdown("**Staffing Plan (first 3):**")
-                            for j, staff in enumerate(result['staffing_preview'], 1):
+                            for j, staff in enumerate(staffing_plan[:3], 1):
                                 st.write(f"{j}. {staff}")
-                            if result['staffing_count'] > 3:
-                                st.write(f"... and {result['staffing_count'] - 3} more")
+                            if staffing_count > 3:
+                                st.write(f"... and {staffing_count - 3} more")
                         
                         # Download options for this result
                         st.markdown("**Download Options:**")
@@ -501,6 +580,24 @@ def main():
             
             elif search_button and not search_query:
                 st.warning("⚠️ Please enter a search query")
+            
+            # Search explanation
+            st.markdown("---")
+            with st.expander("🔍 About Search Methods", expanded=False):
+                st.markdown("""
+                **Vector Search (Semantic)**: 
+                - Uses AI embeddings to understand meaning and context
+                - Best for conceptual searches (e.g., "golf related events" finds Masters programs)
+                - Handles synonyms and related concepts automatically
+                - Most accurate for complex queries
+                - **Recommended for most searches**
+                
+                **Basic Search**:
+                - Traditional keyword matching using Azure Search
+                - Fast and reliable for exact keyword searches
+                - Good when you know the exact words in the document
+                - Requires exact or very close matches
+                """)
             
             # Quick search suggestions
             st.markdown("---")
