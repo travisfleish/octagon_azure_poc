@@ -1,0 +1,613 @@
+import io
+import json
+import re
+import zipfile
+import sys
+import asyncio
+from datetime import datetime
+from pathlib import Path
+
+import streamlit as st
+import pandas as pd
+from azure.identity import DefaultAzureCredential
+from azure.storage.blob import BlobServiceClient
+
+# Add the app directory to the Python path for vector services
+sys.path.append(str(Path(__file__).parent / "octagon-staffing-app"))
+
+from process_one_sow import extract_docx_text, extract_pdf_text, parse_fields_deterministic, process_blob
+from enhanced_vector_search import EnhancedVectorSearch, run_async
+
+
+ACCOUNT_URL = "https://octagonstaffingstg5nww.blob.core.windows.net/"
+SRC_CONTAINER = "sows"
+EXTRACTED_CONTAINER = "extracted"
+PARSED_CONTAINER = "parsed"
+
+
+def init_clients():
+    cred = DefaultAzureCredential()
+    svc = BlobServiceClient(account_url=ACCOUNT_URL, credential=cred)
+    return (
+        svc.get_container_client(SRC_CONTAINER),
+        svc.get_container_client(EXTRACTED_CONTAINER),
+        svc.get_container_client(PARSED_CONTAINER),
+    )
+
+
+# run_async is now imported from simple_vector_search
+
+def index_document_for_search(blob_name, company, sow_id, full_text, structured_text):
+    """Index a document for vector search using the existing enhanced_vector_search service"""
+    try:
+        # Create a simple document structure for indexing
+        doc_data = {
+            'blob_name': blob_name,
+            'company': company,
+            'sow_id': sow_id,
+            'full_text': full_text,
+            'structured_text': structured_text
+        }
+        
+        # Use the existing vector search service to index
+        vector_search = EnhancedVectorSearch()
+        
+        # Index the document using the new method
+        result = run_async(vector_search.index_document(doc_data))
+        return result
+        
+    except Exception as e:
+        st.error(f"Indexing error: {e}")
+        return False
+
+def generate_sow_summary(text: str, query: str) -> str:
+    """Generate a concise AI summary of the SOW based on the search query."""
+    # Extract key information from the SOW text
+    lines = text.split('\n')
+    
+    # Find key sections
+    project_title = ""
+    term_info = ""
+    description = ""
+    deliverables = []
+    
+    for i, line in enumerate(lines):
+        line = line.strip()
+        
+        # Look for project title
+        if "project:" in line.lower() or "title of project:" in line.lower():
+            project_title = line
+            # Get next few lines for more context
+            for j in range(i+1, min(i+3, len(lines))):
+                if lines[j].strip():
+                    project_title += " " + lines[j].strip()
+            break
+    
+    # Look for term information
+    for line in lines:
+        if "term of project:" in line.lower() or "start date:" in line.lower():
+            term_info = line
+            break
+    
+    # Look for description
+    for i, line in enumerate(lines):
+        if "description:" in line.lower() or "scope of work:" in line.lower():
+            description = line
+            # Get next few lines
+            for j in range(i+1, min(i+5, len(lines))):
+                if lines[j].strip() and len(lines[j].strip()) > 10:
+                    description += " " + lines[j].strip()
+            break
+    
+    # Look for deliverables
+    for i, line in enumerate(lines):
+        if "deliverables:" in line.lower():
+            for j in range(i+1, min(i+10, len(lines))):
+                if lines[j].strip().startswith('•') or lines[j].strip().startswith('-'):
+                    deliverables.append(lines[j].strip())
+                elif lines[j].strip() and not lines[j].strip().startswith(('project', 'term', 'fee', 'agreement')):
+                    deliverables.append(lines[j].strip())
+                if len(deliverables) >= 5:
+                    break
+            break
+    
+    # Generate summary
+    summary_parts = []
+    
+    if project_title:
+        summary_parts.append(f"**Project:** {project_title}")
+    
+    if term_info:
+        summary_parts.append(f"**Term:** {term_info}")
+    
+    if description:
+        # Truncate description if too long
+        if len(description) > 300:
+            description = description[:300] + "..."
+        summary_parts.append(f"**Description:** {description}")
+    
+    if deliverables:
+        summary_parts.append("**Key Deliverables:**")
+        for deliverable in deliverables[:5]:  # Limit to 5 deliverables
+            summary_parts.append(f"• {deliverable}")
+    
+    # If no structured info found, create a general summary
+    if not summary_parts:
+        # Extract first few sentences as summary
+        sentences = text.split('.')
+        summary_text = '. '.join(sentences[:3]) + '.'
+        if len(summary_text) > 200:
+            summary_text = summary_text[:200] + "..."
+        summary_parts.append(f"**Summary:** {summary_text}")
+    
+    return '\n\n'.join(summary_parts)
+
+st.set_page_config(page_title="Octagon Staffing Plan Generator", page_icon="📄", layout="centered")
+st.title("📄 Octagon Staffing Plan Generator")
+st.caption("Choose your workflow: Upload historical SOWs to build the database, or upload new SOWs to generate staffing plans.")
+
+# Add tabs for different functionalities
+tab1, tab2, tab3, tab4 = st.tabs(["📚 Historical SOWs", "🆕 New Staffing Plans", "🔍 Vector Search", "📊 Index Management"])
+
+with tab1:
+    st.header("📚 Historical SOW Upload")
+    st.markdown("""
+    **Purpose**: Upload existing SOWs that already have staffing plans to build our knowledge database.
+    
+    **What happens**: 
+    - Documents are processed and indexed for search
+    - Existing staffing plans are extracted and stored
+    - Documents become available for similarity matching
+    - Used to improve future staffing plan recommendations
+    """)
+    
+    st.info("💡 **Use this for**: Completed projects, past SOWs with known staffing outcomes, training data")
+    
+    uploaded = st.file_uploader("Choose a PDF or DOCX", type=["pdf", "docx"], accept_multiple_files=True)
+
+if uploaded is not None:
+        # Handle both single file and multiple files
+        files_to_process = uploaded if isinstance(uploaded, list) else [uploaded]
+        
+        st.write(f"📁 {len(files_to_process)} file(s) selected for processing")
+        
+        if st.button("🚀 Process & Index Documents", type="primary"):
+            progress_bar = st.progress(0)
+            status_text = st.empty()
+            
+            successful_uploads = 0
+            successful_indexes = 0
+            
+            # Initialize vector search for indexing
+            vector_search = EnhancedVectorSearch()
+            
+            for i, uploaded_file in enumerate(files_to_process):
+                try:
+                    # Update progress
+                    progress = (i + 1) / len(files_to_process)
+                    progress_bar.progress(progress)
+                    status_text.text(f"Processing {uploaded_file.name}...")
+                    
+                    file_bytes = uploaded_file.read()
+                    blob_name = uploaded_file.name
+
+                    st.write(f"📤 Uploading {blob_name} to Azure Blob Storage…")
+                    src, extracted, parsed = init_clients()
+
+                    # Upload original file to sows/
+                    src.upload_blob(name=blob_name, data=file_bytes, overwrite=True)
+                    st.success(f"✅ Uploaded {blob_name} to container '{SRC_CONTAINER}'")
+
+                    with st.spinner(f"🔍 Extracting and parsing {blob_name} with LLM…"):
+                        result_row = process_blob(src, extracted, parsed, blob_name)
+
+                    st.success(f"✅ {blob_name} - Extraction and parsing complete!")
+                    successful_uploads += 1
+                    
+                    # Index the document for vector search
+                    try:
+                        status_text.text(f"🔍 Indexing {blob_name} for search...")
+                        
+                        # Get the extracted text for indexing
+                        stem = blob_name.rsplit(".", 1)[0]
+                        extracted_blob_name = f"{stem}.txt"
+                        
+                        # Download the extracted text
+                        extracted_client = extracted  # Use the extracted container client directly
+                        extracted_text = extracted_client.download_blob(extracted_blob_name).readall().decode("utf-8")
+                        
+                        # Get the parsed JSON for structured data
+                        parsed_client = parsed  # Use the parsed container client directly
+                        parsed_json = json.loads(parsed_client.download_blob(f"{stem}.json").readall().decode("utf-8"))
+                        
+                        # Create document for indexing
+                        doc_data = {
+                            'blob_name': extracted_blob_name,
+                            'company': parsed_json.get('company', 'Unknown'),
+                            'sow_id': parsed_json.get('sow_id', 'Unknown'),
+                            'full_text': extracted_text,
+                            'structured_text': json.dumps(parsed_json)
+                        }
+                        
+                        # Index the document
+                        st.info(f"📊 Indexing data: Company={doc_data['company']}, SOW ID={doc_data['sow_id']}")
+                        index_result = run_async(vector_search.index_document(doc_data))
+                        
+                        if index_result:
+                            successful_indexes += 1
+                            st.success(f"🎉 {blob_name} - Successfully uploaded, parsed, and indexed for search!")
+                        else:
+                            st.warning(f"⚠️ {blob_name} - Uploaded and parsed, but indexing failed")
+                            
+                    except Exception as index_error:
+                        st.warning(f"⚠️ {blob_name} - Uploaded and parsed, but indexing failed: {index_error}")
+
+                    # Show results for this file
+                    with st.expander(f"📄 Results for {blob_name}"):
+                        st.subheader("Parsed Data")
+                        st.json(result_row)
+                        
+                        # Show full parsed JSON
+                        try:
+                            parsed_json = json.loads(parsed_client.download_blob(f"{stem}.json").readall().decode("utf-8"))
+                            st.subheader("Full Parsed JSON")
+                            st.json(parsed_json)
+                        except Exception as e:
+                            st.warning(f"Could not fetch parsed JSON from storage: {e}")
+
+                except Exception as e:
+                    st.error(f"❌ Failed to process {uploaded_file.name}: {e}")
+                    continue
+            
+            # Final status
+            progress_bar.progress(1.0)
+            status_text.text("Processing complete!")
+            
+            st.success(f"🎉 Successfully processed {successful_uploads} documents and indexed {successful_indexes} for search!")
+            
+            if successful_indexes > 0:
+                st.info("💡 New documents are now searchable in the Vector Search tab!")
+            
+            # Clear the file uploader
+            st.rerun()
+
+with tab2:
+    st.header("🆕 New Staffing Plan Generation")
+    st.markdown("""
+    **Purpose**: Upload new SOWs to generate AI-powered directional staffing plans.
+    
+    **What happens**:
+    - Document is processed and analyzed
+    - Roles and requirements are detected
+    - Baseline staffing allocations are generated using heuristics
+    - AI draft staffing plan is created for review
+    - Similar historical projects are identified for reference
+    """)
+    
+    st.info("💡 **Use this for**: New project proposals, RFPs, staffing plan planning, resource allocation")
+    
+    # New staffing plan upload section
+    st.subheader("Upload New SOW for Staffing Plan")
+    
+    uploaded_new = st.file_uploader(
+        "Choose a PDF or DOCX for staffing plan generation", 
+        type=["pdf", "docx"], 
+        accept_multiple_files=False,
+        key="new_staffing_upload"
+    )
+    
+    if uploaded_new is not None:
+        st.write(f"📁 Selected: {uploaded_new.name}")
+        
+        if st.button("🚀 Generate Staffing Plan", type="primary", key="generate_staffing"):
+            with st.spinner("Generating staffing plan..."):
+                try:
+                    # Process the uploaded file
+                    file_bytes = uploaded_new.read()
+                    blob_name = uploaded_new.name
+                    
+                    # Upload to blob storage
+                    src, extracted, parsed = init_clients()
+                    src.upload_blob(name=blob_name, data=file_bytes, overwrite=True)
+                    
+                    # Process with LLM to extract structured data
+                    result_row = process_blob(src, extracted, parsed, blob_name)
+                    
+                    # Get the parsed JSON data
+                    stem = blob_name.rsplit(".", 1)[0]
+                    parsed_client = parsed  # Use the parsed container client directly
+                    parsed_json = json.loads(parsed_client.download_blob(f"{stem}.json").readall().decode("utf-8"))
+                    
+                    # Debug: Show what was parsed
+                    st.info(f"🔍 Parsed data keys: {list(parsed_json.keys())}")
+                    if 'sow_id' in parsed_json:
+                        st.info(f"📋 SOW ID from parsing: {parsed_json['sow_id']}")
+                    if 'company' in parsed_json:
+                        st.info(f"🏢 Company from parsing: {parsed_json['company']}")
+                    if 'project_title' in parsed_json or 'title' in parsed_json:
+                        title = parsed_json.get('project_title') or parsed_json.get('title')
+                        st.info(f"📄 Project Title from parsing: {title}")
+                    
+                    # Debug: Show detected roles
+                    if 'roles_detected' in parsed_json:
+                        st.info(f"👥 Detected Roles: {parsed_json['roles_detected']}")
+                    else:
+                        st.warning("⚠️ No 'roles_detected' found in parsed data!")
+                        st.write("Available keys:", list(parsed_json.keys()))
+                    
+                    # Import the heuristics engine and staffing plan service
+                    from app.services.heuristics_engine import HeuristicsEngine
+                    from app.services.staffing_plan_service import StaffingPlanService
+                    from app.models.sow import ProcessedSOW, SOWProcessingType
+                    from app.models.staffing import StaffingPlan
+                    
+                    # Create a ProcessedSOW object from the parsed data with better fallbacks
+                    # Generate a sow_id if not found in parsed data
+                    sow_id = parsed_json.get('sow_id')
+                    if not sow_id or sow_id == 'Unknown':
+                        # Create a sow_id from the blob name
+                        stem = blob_name.rsplit(".", 1)[0]
+                        sow_id = f"SOW-{stem.upper().replace('_', '-')}"
+                    
+                    # Get company with fallback
+                    company = parsed_json.get('company', 'Unknown Company')
+                    
+                    # Get project title with fallback
+                    project_title = parsed_json.get('project_title') or parsed_json.get('title', 'Unknown Project')
+                    
+                    processed_sow = ProcessedSOW(
+                        blob_name=blob_name,
+                        company=company,
+                        sow_id=sow_id,
+                        project_title=project_title,
+                        full_text=result_row.get('full_text', ''),
+                        processing_type=SOWProcessingType.NEW_STAFFING
+                    )
+                    
+                    # Generate staffing plan using heuristics engine
+                    staffing_service = StaffingPlanService()
+                    staffing_plan = staffing_service.generate_staffing_plan_from_sow(processed_sow, parsed_json)
+                    
+                    st.success("✅ Staffing plan generated using heuristics engine!")
+                    
+                    # Display the generated staffing plan
+                    st.subheader("🎯 AI-Generated Staffing Plan")
+                    st.info("📝 **This is an AI DRAFT** - Review and refine as needed")
+                    
+                    # Show staffing allocations with full details
+                    st.subheader("📊 Staffing Plan Details")
+                    for role in staffing_plan.roles:
+                        col1, col2, col3, col4, col5 = st.columns([2, 1.5, 1, 1, 1])
+                        with col1:
+                            st.write(f"**{role.role}**")
+                        with col2:
+                            dept = role.department or "Unknown"
+                            st.write(f"Dept: {dept}")
+                        with col3:
+                            level = role.level if role.level is not None else "N/A"
+                            st.write(f"Level: {level}")
+                        with col4:
+                            st.write(f"Allocation: {role.allocation_percent}%")
+                        with col5:
+                            st.write(f"Qty: {role.quantity}")
+                    
+                    # Show role notes if available
+                    if any(role.notes for role in staffing_plan.roles):
+                        st.subheader("📝 Role Notes")
+                        for role in staffing_plan.roles:
+                            if role.notes:
+                                st.write(f"• **{role.role}**: {role.notes}")
+                    
+                    # Show summary statistics
+                    st.subheader("📈 Summary")
+                    total_allocation = sum(role.allocation_percent for role in staffing_plan.roles)
+                    st.metric("Total Allocation", f"{total_allocation}%")
+                    st.metric("Number of Roles", len(staffing_plan.roles))
+                    st.metric("Confidence Score", f"{staffing_plan.confidence:.2f}")
+                    
+                    # Show detected roles from SOW
+                    detected_roles = parsed_json.get('roles_detected', [])
+                    if detected_roles:
+                        st.subheader("🔍 Roles Detected in SOW")
+                        for role in detected_roles:
+                            st.write(f"• {role}")
+                    
+                    # Add CSV Export functionality
+                    st.subheader("📊 Export Options")
+                    
+                    # Create CSV data for export
+                    csv_data = []
+                    for role in staffing_plan.roles:
+                        csv_data.append({
+                            "Role": role.role,
+                            "Department": role.department or "Unknown",
+                            "Level": role.level if role.level is not None else "N/A",
+                            "Quantity": role.quantity,
+                            "Allocation_Percent": role.allocation_percent,
+                            "Notes": role.notes or ""
+                        })
+                    
+                    if csv_data:
+                        # Create DataFrame
+                        df = pd.DataFrame(csv_data)
+                        
+                        # Convert to CSV
+                        csv = df.to_csv(index=False)
+                        
+                        # Download button
+                        st.download_button(
+                            label="📥 Download Staffing Plan as CSV",
+                            data=csv,
+                            file_name=f"staffing_plan_{processed_sow.sow_id}.csv",
+                            mime="text/csv",
+                            type="primary"
+                        )
+                        
+                        # Show preview of CSV data
+                        with st.expander("👁️ Preview CSV Data"):
+                            st.dataframe(df)
+                    
+                    # Show the full staffing plan as JSON for debugging
+                    with st.expander("🔧 Technical Details (JSON)"):
+                        st.json(staffing_plan.dict())
+                    
+                    # Also show the parsed SOW data
+                    with st.expander("📄 Parsed SOW Data"):
+                        st.json(parsed_json)
+                        
+                except Exception as e:
+                    st.error(f"❌ Failed to generate staffing plan: {e}")
+                    st.exception(e)
+
+with tab3:
+    st.header("🔍 Vector Search")
+    st.caption("Search for similar SOW documents using semantic similarity")
+    
+    # Initialize the enhanced vector search service
+    vector_search = EnhancedVectorSearch()
+    
+    # Get available companies dynamically
+    available_companies = run_async(vector_search.get_available_companies())
+    
+    # Search interface
+    col1, col2 = st.columns([3, 1])
+    
+    with col1:
+        search_query = st.text_input("Search query", placeholder="e.g., 'project management roles with 6 month duration'")
+    
+    with col2:
+        search_type = st.selectbox("Search type", ["Vector", "Hybrid", "Text"])
+    
+    company_filter = st.selectbox("Filter by company (optional)", available_companies)
+    
+    if st.button("Search", type="primary"):
+        if search_query:
+            try:
+                with st.spinner("Searching..."):
+                    # Apply company filter
+                    company = None if company_filter == "All" else company_filter
+                    
+                    results = run_async(vector_search.search_similar_documents_with_staffing(
+                        query_text=search_query,
+                        top_k=10,
+                        search_type=search_type.lower(),
+                        company_filter=company
+                    ))
+                
+                if results:
+                    st.success(f"Found {len(results)} similar documents")
+                    
+                    for i, result in enumerate(results, 1):
+                        with st.expander(f"{i}. {result.get('blob_name', 'Unknown')} (Score: {result.get('score', 'N/A')})"):
+                            st.write(f"**Company:** {result.get('company', 'N/A')}")
+                            st.write(f"**SOW ID:** {result.get('sow_id', 'N/A')}")
+                            
+                            # Show AI summary of the SOW
+                            full_text = result.get('full_text', '')
+                            if full_text:
+                                st.write("### 📋 SOW Summary")
+                                # Generate a concise AI summary of the SOW
+                                summary = generate_sow_summary(full_text, search_query)
+                                st.write(summary)
+                            
+                            # Show staffing plan information
+                            staffing_plan = result.get('staffing_plan', {})
+                            if staffing_plan and not staffing_plan.get('error'):
+                                st.write("### 👥 Staffing Plan")
+                                
+                                # Display structured staffing table
+                                if staffing_plan.get('structured_staffing'):
+                                    # Create a proper table with headers
+                                    table_data = []
+                                    for staff in staffing_plan['structured_staffing'][:10]:  # Limit to 10 staff
+                                        table_data.append([
+                                            staff['name'],
+                                            staff['role'],
+                                            staff['primary_role'],
+                                            staff['percentage'],
+                                            staff['location']
+                                        ])
+                                    
+                                    if table_data:
+                                        # Create a DataFrame for better table display
+                                        df = pd.DataFrame(table_data, columns=['Name', 'Role', 'Primary Role', '%', 'Location'])
+                                        st.table(df)
+                                else:
+                                    st.info("No structured staffing table found")
+                            elif staffing_plan.get('error'):
+                                st.warning(f"⚠️ Could not extract staffing plan: {staffing_plan['error']}")
+                            else:
+                                st.info("ℹ️ No staffing plan information found")
+                else:
+                    st.info("No similar documents found")
+                    
+            except Exception as e:
+                st.error(f"Search failed: {e}")
+        else:
+            st.warning("Please enter a search query")
+
+with tab4:
+    st.header("📊 Index Management")
+    st.caption("Manage the vector search index")
+    
+    # Initialize the enhanced vector search service
+    vector_search = EnhancedVectorSearch()
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        if st.button("Show Statistics", type="primary"):
+            try:
+                with st.spinner("Getting statistics..."):
+                    stats = run_async(vector_search.get_index_stats())
+                
+                st.metric("Document Count", stats.get('document_count', 'N/A'))
+                st.metric("Index Name", stats.get('index_name', 'N/A'))
+                st.success("✅ Vector search index is working!")
+            except Exception as e:
+                st.error(f"Failed to get statistics: {e}")
+    
+    with col2:
+        if st.button("Test Search"):
+            try:
+                with st.spinner("Testing search..."):
+                    results = run_async(vector_search.search_similar_documents(
+                        query_text="project management",
+                        top_k=3,
+                        search_type="vector"
+                    ))
+                
+                if results:
+                    st.success(f"✅ Search working! Found {len(results)} results")
+                    for i, result in enumerate(results, 1):
+                        st.write(f"{i}. {result['blob_name']} ({result['company']})")
+                        
+                        # Show staffing plan preview
+                        staffing_plan = result.get('staffing_plan', {})
+                        if staffing_plan and not staffing_plan.get('error'):
+                            if staffing_plan.get('roles'):
+                                st.write(f"   👥 Roles: {', '.join(staffing_plan['roles'][:3])}")
+                            if staffing_plan.get('hours'):
+                                total_hours = sum(staffing_plan['hours'])
+                                st.write(f"   ⏱️ Total Hours: {total_hours}")
+                else:
+                    st.warning("No results found")
+            except Exception as e:
+                st.error(f"Search test failed: {e}")
+    
+    with col3:
+        if st.button("List Companies"):
+            try:
+                with st.spinner("Getting companies..."):
+                    companies = run_async(vector_search.get_available_companies())
+                
+                st.write("**Available Companies:**")
+                for company in companies:
+                    st.write(f"• {company}")
+            except Exception as e:
+                st.error(f"Failed to get companies: {e}")
+
+st.divider()
+st.caption("✅ Vector search is working with the 'octagon-sows-text-only' index")
+
+

@@ -1,0 +1,114 @@
+Staffing Plan Generator Prototype – Design Documentation (Crawl Phase)
+
+Overview 
+
+To build a prototype for an AI-powered staffing plan tool, we’ve met with critical teams and documented the process they follow to create staffing plans. We’ll in turn look for ways to augment that process at specific points, to save time and relieve friction. But Crawl’s true value is not just the prototype, it’s the process clarity and standardization that unlocks the possibility of AI at all.
+
+Current Process
+Challenges in Workflow
+The current staffing plan process at Octagon is sprawling, disconnected, and highly variable across departments and opportunity types (competitive RFPs, retainer renegotiations, new projects and pursuits, etc.) There is no single, standardized workflow. Instead, different teams maintain their own reference documents. Resourcing and Billability are 2 critical documents that live locally with each department, managed within XLS files. This is a critical systems challenge, which could make it difficult to drive confident AI advisory outputs.
+
+Process Constraints
+Then there’s the requirements, where key steps like Creative Concepting may create bottlenecks and gaps in the collaborative workflow, while other constraints (sponsorship guidelines, activation caveats, pitch team bandwidth, historical client knowledge, client and project location requirements) will emerge through the process to materially impact the scope of work and the collective team’s ability to quickly drive towards a staffing plan. Very little of this is codified, which forces the pitch teams to rely heavily on institutional knowledge and subject matter experts.
+
+Prototype Approach
+These examples describe why an iterative, Crawl-Walk-Run type of approach matters. If we tried to automate the output without mapping and simplifying the process, the tool would fail under the weight of inconsistent inputs and undefined workflows.
+Once Crawl is in place, Walk and Run phases can look to reconcile those historical gaps in process to provide more predictive accuracy, and solidify systems support to provide real-time resourcing. 
+
+Designing Crawl Phase
+The Crawl phase gives us a way to:
+●	Map and standardize a sprawling process
+●	Introduce AI in targeted, high-leverage instances of the process (parsing unstructured scopes, normalizing data, pre-populating templates).
+●	Provide directional outputs, not a final staffing plan, so teams can still apply their expertise and remain fluid to bring to bear their SME. 
+●	Build organizational trust by showing value quickly while documenting and fixing endemic process gaps.
+
+1. Objective
+●	Automate the first pass of staffing plan generation
+●	Provide directional, editable allocations, not final staffing decisions.
+●	Reduce friction and save manual effort at the “blank page” stage.
+ 
+2. Process Placement
+
+●	Current workflow (manual):
+
+○	Client Brief → Pitch Team Assembles → Sponsorship Unpacks Assets and Timelines → Creative Concepting → Scope of Work → Department Inputs → Resourcing & Billability → Staffing Plan → Pricing → Finance / Dept Approval
+
+●	Prototype insertion point:
+
+○	Immediately after Scope of Work is available, but before Detailed Resourcing Checks.
+ 
+3. Prototype Logic & Heuristics
+
+●	Baseline allocations (examples):
+
+○	Creative Director always pre-allocated at 5%.
+○	L7/L8 leaders allocated for oversight at 5%.
+○	Sponsorship ≤ 25% FTE per client (≤ 50% per person).
+○	Client Services 75–100% FTE.
+○	Experiences/Hospitality near 100% FTE.
+○	Creative 5–25% FTE across multiple clients.
+
+●	Tolerance:
+
+○	Accept 20–50% overstaffing of senior talent early, with junior staff expected to absorb slack later.
+
+●	Inputs normalized:
+
+○	% FTE ↔ hours.
+○	Client SOW templates (historical data for training)
+○	Project duration, scope and key terms imputed from SOW.
+○	Budget back-solve (e.g., 40% of fees → execution, 60% → overhead).
+
+●	Output:
+
+○	Pre-populated staffing plan template.
+○	Editable allocations by department/role/level.
+○	Directional only. Department leads refine based on institutional knowledge/SME/etc.
+
+4. Technical Design
+
+●	Parsing Layer: Use Azure Document Intelligence/LLM parsing/OCR to extract project terms (duration, deliverables, budget, constraints) from unstructured SOWs.
+
+●	Semantic Intelligence Layer: Apply embeddings to normalize inconsistent role titles/department inputs and profile staffing categories implied by scope.
+
+●	Heuristic Seeding: Introduce baseline allocations as scaffolding, then adjust based on parsed scope context.
+
+●	Sister Pairing / Historical Reference: Use semantic similarity across available SOWs (limited dataset today) to surface the most similar prior project. This acts as a directional reference, not a prediction.
+
+●	Template Generation: Auto-populate a draft staffing plan template that SMEs can edit. Output is clearly marked as AI Draft.
+
+
+5. Data & Dependencies
+
+●	Required Inputs:
+
+○	Scope of Work document (post-creative).
+○	Resourcing spreadsheets (per department).
+○	Billability trackers (per department).
+○	Rate cards (finance, optional for crawl phase). 
+
+●	Dependencies/Challenges:
+
+○	Standardization of spreadsheets (columns, headers).
+○	Inconsistent rate card formats.
+○	Creative Concepting bottleneck means tool often “sits idle” until Scope of Work is defined.
+ 
+ 
+5. Deliverables
+
+●	Slides:
+
+○	Workflow diagram with AI insertion point.
+○	Crawl/Walk/Run roadmap of the staffing plan generator.
+
+●	Prototype (Crawl):
+
+○	Working demo that ingests scope.
+○	Exports pre-populated staffing template.
+ 
+ 
+
+
+
+
+
