@@ -1,0 +1,101 @@
+{
+  "file": "/Users/travisfleisher/Cursor Project/Octagon/azure_setup/sows/company_2_sow_1.pdf",
+  "entries": [
+    {
+      "name": null,
+      "level": "EVP",
+      "title": "EVP",
+      "primary_role": null,
+      "hours": 18.0,
+      "hours_pct": 1.0
+    },
+    {
+      "name": null,
+      "level": "VP",
+      "title": "VP",
+      "primary_role": null,
+      "hours": 900.0,
+      "hours_pct": 50.0
+    },
+    {
+      "name": null,
+      "level": "AD",
+      "title": "AD",
+      "primary_role": null,
+      "hours": 1800.0,
+      "hours_pct": 100.0
+    },
+    {
+      "name": null,
+      "level": "SAE",
+      "title": "SAE",
+      "primary_role": null,
+      "hours": 1800.0,
+      "hours_pct": 100.0
+    },
+    {
+      "name": null,
+      "level": "AM",
+      "title": "AM",
+      "primary_role": null,
+      "hours": 144.0,
+      "hours_pct": 8.0
+    },
+    {
+      "name": null,
+      "level": "VP",
+      "title": "VP",
+      "primary_role": null,
+      "hours": 540.0,
+      "hours_pct": 30.0
+    },
+    {
+      "name": null,
+      "level": "AD",
+      "title": "AD",
+      "primary_role": null,
+      "hours": 900.0,
+      "hours_pct": 50.0
+    },
+    {
+      "name": null,
+      "level": "AD",
+      "title": "AD",
+      "primary_role": null,
+      "hours": 900.0,
+      "hours_pct": 50.0
+    },
+    {
+      "name": null,
+      "level": "AD",
+      "title": "AD",
+      "primary_role": null,
+      "hours": 450.0,
+      "hours_pct": 25.0
+    },
+    {
+      "name": null,
+      "level": "AM",
+      "title": "AM",
+      "primary_role": null,
+      "hours": 1800.0,
+      "hours_pct": 100.0
+    },
+    {
+      "name": null,
+      "level": "AM",
+      "title": "AM",
+      "primary_role": null,
+      "hours": 468.0,
+      "hours_pct": 26.0
+    },
+    {
+      "name": null,
+      "level": "AD",
+      "title": "AD",
+      "primary_role": null,
+      "hours": 234.0,
+      "hours_pct": 13.0
+    }
+  ]
+}

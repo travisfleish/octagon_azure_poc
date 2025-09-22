@@ -1,0 +1,53 @@
+{
+  "file": "/Users/travisfleisher/Cursor Project/Octagon/azure_setup/sows/company_1_sow_4.pdf",
+  "entries": [
+    {
+      "name": "Noah Kolodny",
+      "level": "8",
+      "title": "SVP",
+      "primary_role": null,
+      "hours": 54.0,
+      "hours_pct": 3.0
+    },
+    {
+      "name": "TBC",
+      "level": "5",
+      "title": "Account Director",
+      "primary_role": null,
+      "hours": 180.0,
+      "hours_pct": 10.0
+    },
+    {
+      "name": "TBC",
+      "level": "2",
+      "title": "Strategist / SAE",
+      "primary_role": null,
+      "hours": 180.0,
+      "hours_pct": 10.0
+    },
+    {
+      "name": "Carolyn Ruther",
+      "level": "6",
+      "title": "Sr. Experiential Director",
+      "primary_role": null,
+      "hours": 190.1,
+      "hours_pct": 10.6
+    },
+    {
+      "name": "Leah Zarrilli",
+      "level": "3",
+      "title": "Experiential Manager",
+      "primary_role": null,
+      "hours": 360.0,
+      "hours_pct": 20.0
+    },
+    {
+      "name": "TBC",
+      "level": "2",
+      "title": "Presentation Designer",
+      "primary_role": null,
+      "hours": 45.0,
+      "hours_pct": 2.5
+    }
+  ]
+}

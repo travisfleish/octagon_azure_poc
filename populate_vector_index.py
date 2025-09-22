@@ -127,10 +127,12 @@ class VectorIndexPopulator:
     
     def prepare_document_for_vector_index(self, json_data, content_vector, scope_vector, deliverables_vector):
         """Prepare a JSON document for the vector index"""
-        import uuid
-        
-        # Create a unique ID
-        doc_id = str(uuid.uuid4())
+        # Use deterministic ID: parsed blob's file_name
+        file_name = json_data.get("file_name") or ""
+        doc_id = file_name if file_name else (json_data.get("project_title", "") or json_data.get("client_name", ""))
+        if not doc_id:
+            import uuid
+            doc_id = str(uuid.uuid4())
         
         # Prepare the document
         document = {
@@ -150,15 +152,23 @@ class VectorIndexPopulator:
             "deliverables_vector": deliverables_vector
         }
         
-        # Handle staffing_plan - convert objects to strings
+        # Handle staffing_plan - convert objects (minimal schema) to strings
         staffing_plan = json_data.get("staffing_plan", [])
         staffing_plan_strings = []
         for person in staffing_plan:
             if isinstance(person, dict):
-                name = person.get("name", "N/A")
-                role = person.get("role", "N/A")
-                allocation = person.get("allocation", "N/A")
-                staffing_plan_strings.append(f"{name} ({role}): {allocation}")
+                name = person.get("name") or "N/A"
+                title = person.get("title") or person.get("role") or ""
+                hrs_pct = person.get("hours_pct")
+                hrs = person.get("hours")
+                allocation = None
+                if hrs_pct is not None:
+                    allocation = f"{hrs_pct:.1f}%"
+                elif hrs is not None:
+                    allocation = f"{hrs:.1f} hours"
+                else:
+                    allocation = person.get("allocation") or ""
+                staffing_plan_strings.append(" — ".join([p for p in [str(name), str(title), allocation] if p]))
             else:
                 staffing_plan_strings.append(str(person))
         
@@ -184,9 +194,7 @@ class VectorIndexPopulator:
         for i in range(0, len(documents), batch_size):
             batch = documents[i:i + batch_size]
             
-            payload = {
-                "value": batch
-            }
+            payload = {"value": [{"@search.action": "mergeOrUpload", **doc} for doc in batch]}
             
             try:
                 response = requests.post(url, headers=headers, json=payload)
@@ -229,12 +237,32 @@ class VectorIndexPopulator:
                 continue
             
             # Create content for embedding
+            # Flatten staffing strings prior to creating the document
+            staffing_plan = json_data.get("staffing_plan", [])
+            staffing_plan_strings = []
+            for person in staffing_plan:
+                if isinstance(person, dict):
+                    name = person.get("name") or "N/A"
+                    title = person.get("title") or person.get("role") or ""
+                    hrs_pct = person.get("hours_pct")
+                    hrs = person.get("hours")
+                    if hrs_pct is not None:
+                        allocation = f"{hrs_pct:.1f}%"
+                    elif hrs is not None:
+                        allocation = f"{hrs:.1f} hours"
+                    else:
+                        allocation = person.get("allocation") or ""
+                    staffing_plan_strings.append(" — ".join([p for p in [str(name), str(title), allocation] if p]))
+                else:
+                    staffing_plan_strings.append(str(person))
+
             content_parts = [
                 json_data.get("client_name", ""),
                 json_data.get("project_title", ""),
                 json_data.get("scope_summary", ""),
                 " ".join(json_data.get("deliverables", [])),
-                " ".join([str(item) for item in json_data.get("staffing_plan", [])]),
+                # Use flattened staffing strings for embeddings
+                " ".join(staffing_plan_strings),
                 " ".join(json_data.get("exclusions", []))
             ]
             content_text = " ".join([part for part in content_parts if part])

@@ -153,10 +153,12 @@ class HybridIndexPopulator:
     
     def prepare_document_for_hybrid_index(self, json_data, raw_content, embeddings):
         """Prepare a document for the hybrid index"""
-        import uuid
-        
-        # Create a unique ID
-        doc_id = str(uuid.uuid4())
+        # Use deterministic ID so re-populations overwrite instead of duplicating
+        file_name = json_data.get("file_name", "")
+        doc_id = file_name or json_data.get("project_title", "") or json_data.get("client_name", "")
+        if not doc_id:
+            import uuid
+            doc_id = str(uuid.uuid4())
         
         # Prepare the document
         document = {
@@ -178,18 +180,30 @@ class HybridIndexPopulator:
             "deliverables_vector": embeddings['deliverables']
         }
         
-        # Handle staffing_plan - convert objects to strings
+        # Handle staffing_plan - convert objects (minimal schema) to strings suitable for indexing
         staffing_plan = json_data.get("staffing_plan", [])
         staffing_plan_strings = []
         for person in staffing_plan:
             if isinstance(person, dict):
-                name = person.get("name", "N/A")
-                role = person.get("role", "N/A")
-                allocation = person.get("allocation", "N/A")
-                staffing_plan_strings.append(f"{name} ({role}): {allocation}")
+                # Support both old and new schemas
+                name = person.get("name") or "N/A"
+                title = person.get("title") or person.get("role") or ""
+                hrs_pct = person.get("hours_pct")
+                hrs = person.get("hours")
+                # Fallback to legacy 'allocation'
+                allocation = None
+                if hrs_pct is not None:
+                    allocation = f"{hrs_pct:.1f}%"
+                elif hrs is not None:
+                    allocation = f"{hrs:.1f} hours"
+                else:
+                    allocation = person.get("allocation") or ""
+                staffing_plan_strings.append(
+                    " — ".join([p for p in [str(name), str(title), allocation] if p])
+                )
             else:
                 staffing_plan_strings.append(str(person))
-        
+
         document["staffing_plan"] = staffing_plan_strings
         
         return document
@@ -212,9 +226,8 @@ class HybridIndexPopulator:
         for i in range(0, len(documents), batch_size):
             batch = documents[i:i + batch_size]
             
-            payload = {
-                "value": batch
-            }
+            # Use mergeOrUpload to upsert and avoid duplicates
+            payload = {"value": [{"@search.action": "mergeOrUpload", **doc} for doc in batch]}
             
             try:
                 response = requests.post(url, headers=headers, json=payload)
@@ -260,12 +273,32 @@ class HybridIndexPopulator:
                 continue
             
             # Create content for different embeddings
+            # Flatten staffing strings here (mirror logic from prepare_document_for_hybrid_index)
+            staffing_plan = json_data.get("staffing_plan", [])
+            staffing_plan_strings = []
+            for person in staffing_plan:
+                if isinstance(person, dict):
+                    name = person.get("name") or "N/A"
+                    title = person.get("title") or person.get("role") or ""
+                    hrs_pct = person.get("hours_pct")
+                    hrs = person.get("hours")
+                    if hrs_pct is not None:
+                        allocation = f"{hrs_pct:.1f}%"
+                    elif hrs is not None:
+                        allocation = f"{hrs:.1f} hours"
+                    else:
+                        allocation = person.get("allocation") or ""
+                    staffing_plan_strings.append(" — ".join([p for p in [str(name), str(title), allocation] if p]))
+                else:
+                    staffing_plan_strings.append(str(person))
+
             parsed_content_parts = [
                 json_data.get("client_name", ""),
                 json_data.get("project_title", ""),
                 json_data.get("scope_summary", ""),
                 " ".join(json_data.get("deliverables", [])),
-                " ".join([str(item) for item in json_data.get("staffing_plan", [])]),
+                # Use flattened staffing strings for better embedding
+                " ".join(staffing_plan_strings),
                 " ".join(json_data.get("exclusions", []))
             ]
             parsed_content_text = " ".join([part for part in parsed_content_parts if part])

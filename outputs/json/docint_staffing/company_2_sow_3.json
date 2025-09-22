@@ -1,0 +1,1141 @@
+{
+  "file": "/Users/travisfleisher/Cursor Project/Octagon/azure_setup/sows/company_2_sow_3.pdf",
+  "pages": 8,
+  "tables_detected": 5,
+  "staffing_entries": [
+    {
+      "name": "Derek Aframe",
+      "role": "",
+      "primary_role": "",
+      "level": "EVP",
+      "workstream": "",
+      "location": "US",
+      "percentage": 5.0,
+      "hours": null,
+      "page": 5,
+      "source_table_index": 1,
+      "row_index": 1,
+      "column_values": {
+        "Personnel": "Derek Aframe",
+        "Level": "EVP",
+        "Location": "US",
+        "% Time": "5%"
+      }
+    },
+    {
+      "name": "Hannah Woodfin",
+      "role": "",
+      "primary_role": "",
+      "level": "VP",
+      "workstream": "",
+      "location": "US",
+      "percentage": 50.0,
+      "hours": null,
+      "page": 5,
+      "source_table_index": 1,
+      "row_index": 2,
+      "column_values": {
+        "Personnel": "Hannah Woodfin",
+        "Level": "VP",
+        "Location": "US",
+        "% Time": "50%"
+      }
+    },
+    {
+      "name": "Sarah Brokenshire Hubner",
+      "role": "",
+      "primary_role": "",
+      "level": "GD",
+      "workstream": "",
+      "location": "US",
+      "percentage": 100.0,
+      "hours": null,
+      "page": 5,
+      "source_table_index": 1,
+      "row_index": 3,
+      "column_values": {
+        "Personnel": "Sarah Brokenshire Hubner",
+        "Level": "GD",
+        "Location": "US",
+        "% Time": "100%"
+      }
+    },
+    {
+      "name": "AD FIFA PMO Lead",
+      "role": "",
+      "primary_role": "",
+      "level": "AD",
+      "workstream": "",
+      "location": "US",
+      "percentage": 100.0,
+      "hours": null,
+      "page": 5,
+      "source_table_index": 1,
+      "row_index": 4,
+      "column_values": {
+        "Personnel": "AD FIFA PMO Lead",
+        "Level": "AD",
+        "Location": "US",
+        "% Time": "100%"
+      }
+    },
+    {
+      "name": "Max Boekelmann Market / Toolkit Lead",
+      "role": "",
+      "primary_role": "",
+      "level": "AM",
+      "workstream": "",
+      "location": "US",
+      "percentage": 100.0,
+      "hours": null,
+      "page": 5,
+      "source_table_index": 1,
+      "row_index": 5,
+      "column_values": {
+        "Personnel": "Max Boekelmann Market / Toolkit Lead",
+        "Level": "AM",
+        "Location": "US",
+        "% Time": "100%"
+      }
+    },
+    {
+      "name": "AE FCWC / FWC Approvals",
+      "role": "",
+      "primary_role": "",
+      "level": "AE",
+      "workstream": "",
+      "location": "US",
+      "percentage": 100.0,
+      "hours": null,
+      "page": 5,
+      "source_table_index": 1,
+      "row_index": 6,
+      "column_values": {
+        "Personnel": "AE FCWC / FWC Approvals",
+        "Level": "AE",
+        "Location": "US",
+        "% Time": "100%"
+      }
+    },
+    {
+      "name": "GD - Tennis / Other Platforms",
+      "role": "",
+      "primary_role": "",
+      "level": "GD",
+      "workstream": "",
+      "location": "US",
+      "percentage": 15.0,
+      "hours": null,
+      "page": 5,
+      "source_table_index": 1,
+      "row_index": 7,
+      "column_values": {
+        "Personnel": "GD - Tennis / Other Platforms",
+        "Level": "GD",
+        "Location": "US",
+        "% Time": "15%"
+      }
+    },
+    {
+      "name": "Caitlin Blankenship Tennis PMO",
+      "role": "",
+      "primary_role": "",
+      "level": "AD",
+      "workstream": "",
+      "location": "US",
+      "percentage": 80.0,
+      "hours": null,
+      "page": 5,
+      "source_table_index": 1,
+      "row_index": 8,
+      "column_values": {
+        "Personnel": "Caitlin Blankenship Tennis PMO",
+        "Level": "AD",
+        "Location": "US",
+        "% Time": "80%"
+      }
+    },
+    {
+      "name": "AD Tennis Local XM FRA Support - FABIEN",
+      "role": "",
+      "primary_role": "",
+      "level": "AD",
+      "workstream": "",
+      "location": "FRA",
+      "percentage": 75.0,
+      "hours": null,
+      "page": 5,
+      "source_table_index": 1,
+      "row_index": 9,
+      "column_values": {
+        "Personnel": "AD Tennis Local XM FRA Support - FABIEN",
+        "Level": "AD",
+        "Location": "FRA",
+        "% Time": "75%"
+      }
+    },
+    {
+      "name": "AD Tennis Local UK Support -Kat",
+      "role": "",
+      "primary_role": "",
+      "level": "AD",
+      "workstream": "",
+      "location": "UK",
+      "percentage": 25.0,
+      "hours": null,
+      "page": 5,
+      "source_table_index": 1,
+      "row_index": 10,
+      "column_values": {
+        "Personnel": "AD Tennis Local UK Support -Kat",
+        "Level": "AD",
+        "Location": "UK",
+        "% Time": "25%"
+      }
+    },
+    {
+      "name": "AM Finance",
+      "role": "",
+      "primary_role": "",
+      "level": "AM",
+      "workstream": "",
+      "location": "US",
+      "percentage": 18.0,
+      "hours": null,
+      "page": 5,
+      "source_table_index": 1,
+      "row_index": 11,
+      "column_values": {
+        "Personnel": "AM Finance",
+        "Level": "AM",
+        "Location": "US",
+        "% Time": "18%"
+      }
+    },
+    {
+      "name": "Alice Christie",
+      "role": "",
+      "primary_role": "",
+      "level": "VP",
+      "workstream": "",
+      "location": "UK",
+      "percentage": 30.0,
+      "hours": null,
+      "page": 5,
+      "source_table_index": 1,
+      "row_index": 12,
+      "column_values": {
+        "Personnel": "Alice Christie",
+        "Level": "VP",
+        "Location": "UK",
+        "% Time": "30%"
+      }
+    },
+    {
+      "name": "Svetlana Hanau",
+      "role": "",
+      "primary_role": "",
+      "level": "VP",
+      "workstream": "",
+      "location": "UK",
+      "percentage": 75.0,
+      "hours": null,
+      "page": 5,
+      "source_table_index": 1,
+      "row_index": 13,
+      "column_values": {
+        "Personnel": "Svetlana Hanau",
+        "Level": "VP",
+        "Location": "UK",
+        "% Time": "75%"
+      }
+    },
+    {
+      "name": "Ted Murphy",
+      "role": "",
+      "primary_role": "",
+      "level": "AM",
+      "workstream": "",
+      "location": "UK",
+      "percentage": 49.0,
+      "hours": null,
+      "page": 5,
+      "source_table_index": 1,
+      "row_index": 14,
+      "column_values": {
+        "Personnel": "Ted Murphy",
+        "Level": "AM",
+        "Location": "UK",
+        "% Time": "49%"
+      }
+    },
+    {
+      "name": "AM FWC Hospo (100% from april)",
+      "role": "",
+      "primary_role": "",
+      "level": "AM",
+      "workstream": "",
+      "location": "US",
+      "percentage": 100.0,
+      "hours": null,
+      "page": 5,
+      "source_table_index": 1,
+      "row_index": 15,
+      "column_values": {
+        "Personnel": "AM FWC Hospo (100% from april)",
+        "Level": "AM",
+        "Location": "US",
+        "% Time": "100%"
+      }
+    },
+    {
+      "name": "Marina T",
+      "role": "",
+      "primary_role": "",
+      "level": "AM",
+      "workstream": "",
+      "location": "GERMANY",
+      "percentage": 50.0,
+      "hours": null,
+      "page": 5,
+      "source_table_index": 1,
+      "row_index": 16,
+      "column_values": {
+        "Personnel": "Marina T",
+        "Level": "AM",
+        "Location": "GERMANY",
+        "% Time": "50%"
+      }
+    },
+    {
+      "name": "Strategic Operations, System, Tools, Compliance (All Projects)",
+      "role": "",
+      "primary_role": "",
+      "level": "AD",
+      "workstream": "",
+      "location": "UK",
+      "percentage": 38.0,
+      "hours": null,
+      "page": 5,
+      "source_table_index": 1,
+      "row_index": 17,
+      "column_values": {
+        "Personnel": "Strategic Operations, System, Tools, Compliance (All Projects)",
+        "Level": "AD",
+        "Location": "UK",
+        "% Time": "38%"
+      }
+    },
+    {
+      "name": "Phil Duffy - AD Stella Program Oversight (Jan - Aug)",
+      "role": "",
+      "primary_role": "",
+      "level": "AD",
+      "workstream": "",
+      "location": "UK",
+      "percentage": 50.0,
+      "hours": null,
+      "page": 5,
+      "source_table_index": 1,
+      "row_index": 18,
+      "column_values": {
+        "Personnel": "Phil Duffy - AD Stella Program Oversight (Jan - Aug)",
+        "Level": "AD",
+        "Location": "UK",
+        "% Time": "50%"
+      }
+    },
+    {
+      "name": "SAM WIMB Project Hosp (Feb - Aug) - HENRY",
+      "role": "",
+      "primary_role": "",
+      "level": "SAM",
+      "workstream": "",
+      "location": "UK",
+      "percentage": 75.0,
+      "hours": null,
+      "page": 5,
+      "source_table_index": 1,
+      "row_index": 19,
+      "column_values": {
+        "Personnel": "SAM WIMB Project Hosp (Feb - Aug) - HENRY",
+        "Level": "SAM",
+        "Location": "UK",
+        "% Time": "75%"
+      }
+    },
+    {
+      "name": "SAM RG Project Hosp (Feb - Jul)",
+      "role": "",
+      "primary_role": "",
+      "level": "SAM",
+      "workstream": "",
+      "location": "FRA",
+      "percentage": 75.0,
+      "hours": null,
+      "page": 5,
+      "source_table_index": 1,
+      "row_index": 20,
+      "column_values": {
+        "Personnel": "SAM RG Project Hosp (Feb - Jul)",
+        "Level": "SAM",
+        "Location": "FRA",
+        "% Time": "75%"
+      }
+    },
+    {
+      "name": "NBA Continuation of work / close out",
+      "role": "",
+      "primary_role": "",
+      "level": "AD",
+      "workstream": "",
+      "location": "US",
+      "percentage": 0.0,
+      "hours": null,
+      "page": 5,
+      "source_table_index": 1,
+      "row_index": 21,
+      "column_values": {
+        "Personnel": "NBA Continuation of work / close out",
+        "Level": "AD",
+        "Location": "US",
+        "% Time": "0%"
+      }
+    },
+    {
+      "name": "Derek Aframe",
+      "role": "",
+      "primary_role": "",
+      "level": "EVP",
+      "workstream": "",
+      "location": "",
+      "percentage": null,
+      "hours": null,
+      "page": 6,
+      "source_table_index": 2,
+      "row_index": 1,
+      "column_values": {
+        "PERSONNEL": "Derek Aframe",
+        "LEVEL": "EVP"
+      }
+    },
+    {
+      "name": "Hannah Woodfin",
+      "role": "",
+      "primary_role": "",
+      "level": "VP",
+      "workstream": "",
+      "location": "",
+      "percentage": null,
+      "hours": null,
+      "page": 6,
+      "source_table_index": 2,
+      "row_index": 2,
+      "column_values": {
+        "PERSONNEL": "Hannah Woodfin",
+        "LEVEL": "VP"
+      }
+    },
+    {
+      "name": "Sarah Brokenshire Hubner",
+      "role": "",
+      "primary_role": "",
+      "level": "GD",
+      "workstream": "",
+      "location": "",
+      "percentage": null,
+      "hours": null,
+      "page": 6,
+      "source_table_index": 2,
+      "row_index": 3,
+      "column_values": {
+        "PERSONNEL": "Sarah Brokenshire Hubner",
+        "LEVEL": "GD"
+      }
+    },
+    {
+      "name": "AD FIFA PMO Lead",
+      "role": "",
+      "primary_role": "",
+      "level": "AD",
+      "workstream": "",
+      "location": "",
+      "percentage": null,
+      "hours": null,
+      "page": 6,
+      "source_table_index": 2,
+      "row_index": 4,
+      "column_values": {
+        "PERSONNEL": "AD FIFA PMO Lead",
+        "LEVEL": "AD"
+      }
+    },
+    {
+      "name": "Max Boekelmann Market / Toolkit Lead",
+      "role": "",
+      "primary_role": "",
+      "level": "AM",
+      "workstream": "",
+      "location": "",
+      "percentage": null,
+      "hours": null,
+      "page": 6,
+      "source_table_index": 2,
+      "row_index": 5,
+      "column_values": {
+        "PERSONNEL": "Max Boekelmann Market / Toolkit Lead",
+        "LEVEL": "AM"
+      }
+    },
+    {
+      "name": "AE FCWC / FWC Approvals",
+      "role": "",
+      "primary_role": "",
+      "level": "AE",
+      "workstream": "",
+      "location": "",
+      "percentage": null,
+      "hours": null,
+      "page": 6,
+      "source_table_index": 2,
+      "row_index": 6,
+      "column_values": {
+        "PERSONNEL": "AE FCWC / FWC Approvals",
+        "LEVEL": "AE"
+      }
+    },
+    {
+      "name": "GD - Music / NBA / Stella",
+      "role": "",
+      "primary_role": "",
+      "level": "GD",
+      "workstream": "",
+      "location": "",
+      "percentage": null,
+      "hours": null,
+      "page": 6,
+      "source_table_index": 2,
+      "row_index": 7,
+      "column_values": {
+        "PERSONNEL": "GD - Music / NBA / Stella",
+        "LEVEL": "GD"
+      }
+    },
+    {
+      "name": "Caitlin Blankenship Tennis PMO",
+      "role": "",
+      "primary_role": "",
+      "level": "AD",
+      "workstream": "",
+      "location": "",
+      "percentage": null,
+      "hours": null,
+      "page": 6,
+      "source_table_index": 2,
+      "row_index": 8,
+      "column_values": {
+        "PERSONNEL": "Caitlin Blankenship Tennis PMO",
+        "LEVEL": "AD"
+      }
+    },
+    {
+      "name": "AD Tennis Local XM FRA Support - FABIEN",
+      "role": "",
+      "primary_role": "",
+      "level": "AD",
+      "workstream": "",
+      "location": "",
+      "percentage": null,
+      "hours": null,
+      "page": 6,
+      "source_table_index": 2,
+      "row_index": 9,
+      "column_values": {
+        "PERSONNEL": "AD Tennis Local XM FRA Support - FABIEN",
+        "LEVEL": "AD"
+      }
+    },
+    {
+      "name": "AD Tennis Local UK Support -Kat",
+      "role": "",
+      "primary_role": "",
+      "level": "AD",
+      "workstream": "",
+      "location": "",
+      "percentage": null,
+      "hours": null,
+      "page": 6,
+      "source_table_index": 2,
+      "row_index": 10,
+      "column_values": {
+        "PERSONNEL": "AD Tennis Local UK Support -Kat",
+        "LEVEL": "AD"
+      }
+    },
+    {
+      "name": "AM Finance",
+      "role": "",
+      "primary_role": "",
+      "level": "AM",
+      "workstream": "",
+      "location": "",
+      "percentage": null,
+      "hours": null,
+      "page": 6,
+      "source_table_index": 2,
+      "row_index": 11,
+      "column_values": {
+        "PERSONNEL": "AM Finance",
+        "LEVEL": "AM"
+      }
+    },
+    {
+      "name": "Alice Christie",
+      "role": "",
+      "primary_role": "",
+      "level": "VP",
+      "workstream": "",
+      "location": "",
+      "percentage": null,
+      "hours": null,
+      "page": 6,
+      "source_table_index": 2,
+      "row_index": 12,
+      "column_values": {
+        "PERSONNEL": "Alice Christie",
+        "LEVEL": "VP"
+      }
+    },
+    {
+      "name": "Svetlana Hanau",
+      "role": "",
+      "primary_role": "",
+      "level": "VP",
+      "workstream": "",
+      "location": "",
+      "percentage": null,
+      "hours": null,
+      "page": 6,
+      "source_table_index": 2,
+      "row_index": 13,
+      "column_values": {
+        "PERSONNEL": "Svetlana Hanau",
+        "LEVEL": "VP"
+      }
+    },
+    {
+      "name": "Ted Murphy",
+      "role": "",
+      "primary_role": "",
+      "level": "AM",
+      "workstream": "",
+      "location": "",
+      "percentage": null,
+      "hours": null,
+      "page": 6,
+      "source_table_index": 2,
+      "row_index": 14,
+      "column_values": {
+        "PERSONNEL": "Ted Murphy",
+        "LEVEL": "AM"
+      }
+    },
+    {
+      "name": "AM FWC Hospo",
+      "role": "",
+      "primary_role": "",
+      "level": "AM",
+      "workstream": "",
+      "location": "",
+      "percentage": null,
+      "hours": null,
+      "page": 6,
+      "source_table_index": 2,
+      "row_index": 15,
+      "column_values": {
+        "PERSONNEL": "AM FWC Hospo",
+        "LEVEL": "AM"
+      }
+    },
+    {
+      "name": "Marina T",
+      "role": "",
+      "primary_role": "",
+      "level": "AM",
+      "workstream": "",
+      "location": "",
+      "percentage": null,
+      "hours": null,
+      "page": 6,
+      "source_table_index": 2,
+      "row_index": 16,
+      "column_values": {
+        "PERSONNEL": "Marina T",
+        "LEVEL": "AM"
+      }
+    },
+    {
+      "name": "Strategic Operations, System, Tools, Compliance (All Projects)",
+      "role": "",
+      "primary_role": "",
+      "level": "AD",
+      "workstream": "",
+      "location": "",
+      "percentage": null,
+      "hours": null,
+      "page": 6,
+      "source_table_index": 2,
+      "row_index": 17,
+      "column_values": {
+        "PERSONNEL": "Strategic Operations, System, Tools, Compliance (All Projects)",
+        "LEVEL": "AD"
+      }
+    },
+    {
+      "name": "Phil Duffy - AD Stella Program Oversight (Jan - Aug)",
+      "role": "",
+      "primary_role": "",
+      "level": "AD",
+      "workstream": "",
+      "location": "",
+      "percentage": null,
+      "hours": null,
+      "page": 6,
+      "source_table_index": 2,
+      "row_index": 18,
+      "column_values": {
+        "PERSONNEL": "Phil Duffy - AD Stella Program Oversight (Jan - Aug)",
+        "LEVEL": "AD"
+      }
+    },
+    {
+      "name": "SAM WIMB Project Hosp (Feb - Aug) - HENRY",
+      "role": "",
+      "primary_role": "",
+      "level": "SAM",
+      "workstream": "",
+      "location": "",
+      "percentage": null,
+      "hours": null,
+      "page": 6,
+      "source_table_index": 2,
+      "row_index": 19,
+      "column_values": {
+        "PERSONNEL": "SAM WIMB Project Hosp (Feb - Aug) - HENRY",
+        "LEVEL": "SAM"
+      }
+    },
+    {
+      "name": "SAM RG Project Hosp (Feb - Jul)",
+      "role": "",
+      "primary_role": "",
+      "level": "SAM",
+      "workstream": "",
+      "location": "",
+      "percentage": null,
+      "hours": null,
+      "page": 6,
+      "source_table_index": 2,
+      "row_index": 20,
+      "column_values": {
+        "PERSONNEL": "SAM RG Project Hosp (Feb - Jul)",
+        "LEVEL": "SAM"
+      }
+    },
+    {
+      "name": "NBA continuation of work",
+      "role": "",
+      "primary_role": "",
+      "level": "",
+      "workstream": "",
+      "location": "",
+      "percentage": null,
+      "hours": null,
+      "page": 6,
+      "source_table_index": 2,
+      "row_index": 21,
+      "column_values": {
+        "PERSONNEL": "NBA continuation of work",
+        "LEVEL": ""
+      }
+    },
+    {
+      "name": "Derek Aframe",
+      "role": "",
+      "primary_role": "",
+      "level": "EVP",
+      "workstream": "",
+      "location": "",
+      "percentage": null,
+      "hours": null,
+      "page": 6,
+      "source_table_index": 3,
+      "row_index": 1,
+      "column_values": {
+        "PERSONNEL": "Derek Aframe",
+        "LEVEL": "EVP"
+      }
+    },
+    {
+      "name": "Hannah Woodfin",
+      "role": "",
+      "primary_role": "",
+      "level": "VP",
+      "workstream": "",
+      "location": "",
+      "percentage": null,
+      "hours": null,
+      "page": 6,
+      "source_table_index": 3,
+      "row_index": 2,
+      "column_values": {
+        "PERSONNEL": "Hannah Woodfin",
+        "LEVEL": "VP"
+      }
+    },
+    {
+      "name": "Sarah Brokenshire Hubner",
+      "role": "",
+      "primary_role": "",
+      "level": "GD",
+      "workstream": "",
+      "location": "",
+      "percentage": null,
+      "hours": null,
+      "page": 6,
+      "source_table_index": 3,
+      "row_index": 3,
+      "column_values": {
+        "PERSONNEL": "Sarah Brokenshire Hubner",
+        "LEVEL": "GD"
+      }
+    },
+    {
+      "name": "AD FIFA PMO Lead",
+      "role": "",
+      "primary_role": "",
+      "level": "AD",
+      "workstream": "",
+      "location": "",
+      "percentage": null,
+      "hours": null,
+      "page": 6,
+      "source_table_index": 3,
+      "row_index": 4,
+      "column_values": {
+        "PERSONNEL": "AD FIFA PMO Lead",
+        "LEVEL": "AD"
+      }
+    },
+    {
+      "name": "Max Boekelmann Market / Toolkit Lead",
+      "role": "",
+      "primary_role": "",
+      "level": "AM",
+      "workstream": "",
+      "location": "",
+      "percentage": null,
+      "hours": null,
+      "page": 6,
+      "source_table_index": 3,
+      "row_index": 5,
+      "column_values": {
+        "PERSONNEL": "Max Boekelmann Market / Toolkit Lead",
+        "LEVEL": "AM"
+      }
+    },
+    {
+      "name": "AE FCWC / FWC Approvals",
+      "role": "",
+      "primary_role": "",
+      "level": "AE",
+      "workstream": "",
+      "location": "",
+      "percentage": null,
+      "hours": null,
+      "page": 6,
+      "source_table_index": 3,
+      "row_index": 6,
+      "column_values": {
+        "PERSONNEL": "AE FCWC / FWC Approvals",
+        "LEVEL": "AE"
+      }
+    },
+    {
+      "name": "GD - Music / NBA / Stella",
+      "role": "",
+      "primary_role": "",
+      "level": "GD",
+      "workstream": "",
+      "location": "",
+      "percentage": null,
+      "hours": null,
+      "page": 6,
+      "source_table_index": 3,
+      "row_index": 7,
+      "column_values": {
+        "PERSONNEL": "GD - Music / NBA / Stella",
+        "LEVEL": "GD"
+      }
+    },
+    {
+      "name": "Caitlin Blankenship Tennis PMO",
+      "role": "",
+      "primary_role": "",
+      "level": "AD",
+      "workstream": "",
+      "location": "",
+      "percentage": null,
+      "hours": null,
+      "page": 6,
+      "source_table_index": 3,
+      "row_index": 8,
+      "column_values": {
+        "PERSONNEL": "Caitlin Blankenship Tennis PMO",
+        "LEVEL": "AD"
+      }
+    },
+    {
+      "name": "AD Tennis Local XM FRA Support - FABIEN",
+      "role": "",
+      "primary_role": "",
+      "level": "AD",
+      "workstream": "",
+      "location": "",
+      "percentage": null,
+      "hours": null,
+      "page": 6,
+      "source_table_index": 3,
+      "row_index": 9,
+      "column_values": {
+        "PERSONNEL": "AD Tennis Local XM FRA Support - FABIEN",
+        "LEVEL": "AD"
+      }
+    },
+    {
+      "name": "AD Tennis Local UK Support -Kat",
+      "role": "",
+      "primary_role": "",
+      "level": "AD",
+      "workstream": "",
+      "location": "",
+      "percentage": null,
+      "hours": null,
+      "page": 6,
+      "source_table_index": 3,
+      "row_index": 10,
+      "column_values": {
+        "PERSONNEL": "AD Tennis Local UK Support -Kat",
+        "LEVEL": "AD"
+      }
+    },
+    {
+      "name": "AM Finance",
+      "role": "",
+      "primary_role": "",
+      "level": "AM",
+      "workstream": "",
+      "location": "",
+      "percentage": null,
+      "hours": null,
+      "page": 6,
+      "source_table_index": 3,
+      "row_index": 11,
+      "column_values": {
+        "PERSONNEL": "AM Finance",
+        "LEVEL": "AM"
+      }
+    },
+    {
+      "name": "Alice Christie",
+      "role": "",
+      "primary_role": "",
+      "level": "VP",
+      "workstream": "",
+      "location": "",
+      "percentage": null,
+      "hours": null,
+      "page": 6,
+      "source_table_index": 3,
+      "row_index": 12,
+      "column_values": {
+        "PERSONNEL": "Alice Christie",
+        "LEVEL": "VP"
+      }
+    },
+    {
+      "name": "Svetlana Hanau",
+      "role": "",
+      "primary_role": "",
+      "level": "VP",
+      "workstream": "",
+      "location": "",
+      "percentage": null,
+      "hours": null,
+      "page": 6,
+      "source_table_index": 3,
+      "row_index": 13,
+      "column_values": {
+        "PERSONNEL": "Svetlana Hanau",
+        "LEVEL": "VP"
+      }
+    },
+    {
+      "name": "Ted Murphy",
+      "role": "",
+      "primary_role": "",
+      "level": "AM",
+      "workstream": "",
+      "location": "",
+      "percentage": null,
+      "hours": null,
+      "page": 6,
+      "source_table_index": 3,
+      "row_index": 14,
+      "column_values": {
+        "PERSONNEL": "Ted Murphy",
+        "LEVEL": "AM"
+      }
+    },
+    {
+      "name": "AM FWC Hospo",
+      "role": "",
+      "primary_role": "",
+      "level": "AM",
+      "workstream": "",
+      "location": "",
+      "percentage": null,
+      "hours": null,
+      "page": 6,
+      "source_table_index": 3,
+      "row_index": 15,
+      "column_values": {
+        "PERSONNEL": "AM FWC Hospo",
+        "LEVEL": "AM"
+      }
+    },
+    {
+      "name": "Marina T",
+      "role": "",
+      "primary_role": "",
+      "level": "AM",
+      "workstream": "",
+      "location": "",
+      "percentage": null,
+      "hours": null,
+      "page": 6,
+      "source_table_index": 3,
+      "row_index": 16,
+      "column_values": {
+        "PERSONNEL": "Marina T",
+        "LEVEL": "AM"
+      }
+    },
+    {
+      "name": "Strategic Operations, System, Tools, Compliance (All Projects)",
+      "role": "",
+      "primary_role": "",
+      "level": "AD",
+      "workstream": "",
+      "location": "",
+      "percentage": null,
+      "hours": null,
+      "page": 6,
+      "source_table_index": 3,
+      "row_index": 17,
+      "column_values": {
+        "PERSONNEL": "Strategic Operations, System, Tools, Compliance (All Projects)",
+        "LEVEL": "AD"
+      }
+    },
+    {
+      "name": "Phil Duffy - AD Stella Program Oversight (Jan - Aug)",
+      "role": "",
+      "primary_role": "",
+      "level": "AD",
+      "workstream": "",
+      "location": "",
+      "percentage": null,
+      "hours": null,
+      "page": 6,
+      "source_table_index": 3,
+      "row_index": 18,
+      "column_values": {
+        "PERSONNEL": "Phil Duffy - AD Stella Program Oversight (Jan - Aug)",
+        "LEVEL": "AD"
+      }
+    },
+    {
+      "name": "SAM WIMB Project Hosp (Feb - Aug) - HENRY",
+      "role": "",
+      "primary_role": "",
+      "level": "SAM",
+      "workstream": "",
+      "location": "",
+      "percentage": null,
+      "hours": null,
+      "page": 6,
+      "source_table_index": 3,
+      "row_index": 19,
+      "column_values": {
+        "PERSONNEL": "SAM WIMB Project Hosp (Feb - Aug) - HENRY",
+        "LEVEL": "SAM"
+      }
+    },
+    {
+      "name": "SAM RG Project Hosp (Feb - Jul)",
+      "role": "",
+      "primary_role": "",
+      "level": "SAM",
+      "workstream": "",
+      "location": "",
+      "percentage": null,
+      "hours": null,
+      "page": 6,
+      "source_table_index": 3,
+      "row_index": 20,
+      "column_values": {
+        "PERSONNEL": "SAM RG Project Hosp (Feb - Jul)",
+        "LEVEL": "SAM"
+      }
+    },
+    {
+      "name": "N/A",
+      "role": "",
+      "primary_role": "",
+      "level": "",
+      "workstream": "",
+      "location": "",
+      "percentage": 25.0,
+      "hours": null,
+      "page": 6,
+      "source_table_index": 4,
+      "row_index": 1,
+      "column_values": {
+        "Milano Cortina 2026": "Wimbledon Perfect Serve Global Hospitality Program",
+        "Create hospitality program sell in and secure program hotels in Milan and Livigno": "NPS Value of the global hospitality",
+        "Yes/no": ">80",
+        "25%": "25%"
+      }
+    },
+    {
+      "name": "N/A",
+      "role": "",
+      "primary_role": "",
+      "level": "",
+      "workstream": "",
+      "location": "",
+      "percentage": 25.0,
+      "hours": null,
+      "page": 7,
+      "source_table_index": 5,
+      "row_index": 1,
+      "column_values": {
+        "Deliver 1YP planning timeline for Milano- Cortina 2026": "Deliver 1YP planning timeline for FWC 2026",
+        "Develop inclusive planning timeline and structured roadmap by April 1, 2025 to support PMO kickoff": "Develop inclusive planning timeline for one year to go by end of Q2 2025, while ensuring PMO updated, live & on-line",
+        "Yes/no": "Yes/no",
+        "25%": "25%"
+      }
+    }
+  ]
+}

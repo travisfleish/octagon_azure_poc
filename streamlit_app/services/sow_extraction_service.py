@@ -19,6 +19,12 @@ from dataclasses import dataclass
 from openai import AsyncOpenAI
 from azure.storage.blob.aio import BlobServiceClient
 from azure.identity.aio import DefaultAzureCredential
+try:
+    # Optional: Azure Document Intelligence service for PDF table extraction
+    from .document_intelligence_service import AzureDocumentIntelligenceService
+    _DOCINT_AVAILABLE = True
+except Exception:
+    _DOCINT_AVAILABLE = False
 
 
 @dataclass
@@ -116,6 +122,292 @@ class SOWExtractionService:
                 return f"{days} days"
         except ValueError:
             return None
+    
+    def normalize_staffing_allocation(self, allocation_text: str) -> str:
+        """
+        Normalize staffing allocation to percentage format based on 1800-hour annual basis.
+        
+        Examples:
+        - "45 hours (2.50%)" -> "2.5%"
+        - "9 hours (1%)" -> "1.0%"
+        - "67 hours" -> "3.7%" (67/1800*100)
+        - "525 hrs (25% + Onboarding)" -> "25.0%"
+        - "5% – 60 hrs" -> "5.0%"
+        - "100%" -> "100.0%"
+        """
+        if not allocation_text or not allocation_text.strip():
+            return "0.0%"
+        
+        import re
+        
+        allocation_text = allocation_text.strip()
+        
+        # First, try to extract percentage if it exists
+        percentage_match = re.search(r'(\d+(?:\.\d+)?)\s*%', allocation_text, re.IGNORECASE)
+        
+        if percentage_match:
+            # If percentage is found, use it
+            percentage = float(percentage_match.group(1))
+            return f"{percentage:.1f}%"
+        
+        # If no percentage found, try to extract hours
+        hours_match = re.search(r'(\d+(?:\.\d+)?)\s*h(?:ours?|rs?)?', allocation_text, re.IGNORECASE)
+        
+        if hours_match:
+            # Convert hours to percentage based on 1800-hour annual basis
+            hours = float(hours_match.group(1))
+            percentage = (hours / 1800) * 100
+            return f"{percentage:.1f}%"
+        
+        # If neither percentage nor hours found, return original text
+        return allocation_text
+    
+    def normalize_staffing_plan(self, staffing_plan: list) -> list:
+        """
+        Normalize all staffing plan entries to use percentage-based allocations.
+        
+        Args:
+            staffing_plan: List of staffing entries with name, role, allocation
+            
+        Returns:
+            List of normalized staffing entries with percentage allocations
+        """
+        if not staffing_plan:
+            return []
+        
+        normalized_plan = []
+        
+        for entry in staffing_plan:
+            if not isinstance(entry, dict):
+                continue
+                
+            # Create normalized entry
+            normalized_entry = {
+                'name': entry.get('name', 'N/A'),
+                'role': entry.get('role', 'N/A'),
+                'allocation': self.normalize_staffing_allocation(entry.get('allocation', ''))
+            }
+            
+            normalized_plan.append(normalized_entry)
+        
+        return normalized_plan
+
+    def _canonicalize_header(self, header_cell: str) -> str:
+        h = (header_cell or '').strip().lower()
+        import re as _re
+        h = _re.sub(r"\s+", " ", h)
+        if any(k in h for k in ["name", "personnel", "staff"]):
+            return "name"
+        if any(k in h for k in ["title", "role", "position"]):
+            if "primary role" in h:
+                return "primary_role"
+            return "role"
+        if "%" in h or "percent" in h or "% time" in h:
+            return "percentage"
+        if h.strip(" #") == "hours" or "# hours" in h:
+            return "hours"
+        if "billable hours per annum" in h:
+            return "bhpa"
+        if "hour" in h:
+            return "hours"
+        if "location" in h:
+            return "location"
+        if "level" in h:
+            return "level"
+        if any(k in h for k in ["workstream", "discipline", "department"]):
+            return "workstream"
+        return h
+
+    def _extract_numeric_percentage(self, text: str) -> float:
+        if not text:
+            return None
+        import re as _re
+        m = _re.search(r"(\d{1,3}(?:\.\d+)?)\s*%", text)
+        if m:
+            try:
+                return float(m.group(1))
+            except Exception:
+                return None
+        m = _re.search(r"(\d(?:\.\d+)?)\s*fte", text, _re.I)
+        if m:
+            try:
+                return float(m.group(1)) * 100.0
+            except Exception:
+                return None
+        return None
+
+    def _extract_numeric_hours(self, text: str) -> float:
+        if not text:
+            return None
+        import re as _re
+        m = _re.search(r"(\d{1,4}(?:\.\d+)?)\s*(?:hours|hrs|hr)\b", text, _re.I)
+        if m:
+            try:
+                return float(m.group(1))
+            except Exception:
+                return None
+        m = _re.fullmatch(r"\d{1,4}(?:\.\d+)?", text.strip())
+        if m:
+            try:
+                return float(m.group(0))
+            except Exception:
+                return None
+        return None
+
+    def _parse_di_table_to_entries(self, matrix: list, page_number: int, table_index: int) -> list:
+        if not matrix or not matrix[0]:
+            return []
+        import re as _re
+        # Pick best header row among first 3
+        def _score(row: list) -> int:
+            toks = [str(t or '').strip().lower() for t in row]
+            score = 0
+            for t in toks:
+                if any(k in t for k in ["name", "personnel", "staff"]): score += 3
+                if any(k in t for k in ["title", "role", "position"]): score += 3
+                if "level" in t: score += 1
+                if "%" in t or "percent" in t or "% time" in t: score += 2
+                if "# hours" in t or t.strip(" #") == "hours": score += 3
+            return score
+        search_up_to = min(3, len(matrix))
+        header_idx = 0
+        best_score = _score(matrix[0])
+        for i in range(1, search_up_to):
+            s = _score(matrix[i])
+            if s > best_score:
+                best_score = s
+                header_idx = i
+        headers_raw = matrix[header_idx]
+        headers = [self._canonicalize_header(h) for h in headers_raw]
+        # Build index
+        idx = {}
+        for i, h in enumerate(headers):
+            if h not in idx:
+                idx[h] = i
+        # Fill blank headers based on sample data
+        for c in range(len(headers)):
+            if headers[c]:
+                continue
+            samples = []
+            for r in range(header_idx + 1, min(len(matrix), header_idx + 6)):
+                if c < len(matrix[r]):
+                    samples.append((matrix[r][c] or '').strip())
+            if any('%' in v for v in samples):
+                headers[c] = 'percentage'
+            elif any(_re.fullmatch(r"\d{1,4}(?:[.,]\d+)?", v.replace(',', '')) for v in samples if v):
+                headers[c] = 'hours'
+        def get(col: str, row: list) -> str:
+            j = idx.get(col)
+            if j is None or j >= len(row):
+                return ''
+            return (row[j] or '').strip()
+        entries = []
+        for r_idx, row in enumerate(matrix[header_idx + 1 :], start=1):
+            if not any((cell or '').strip() for cell in row):
+                continue
+            # Filter totals
+            if any(str(cell or '').strip().lower().startswith('total') for cell in row):
+                continue
+            name = get('name', row) or 'N/A'
+            role = get('role', row)
+            primary_role = get('primary_role', row)
+            level = get('level', row)
+            location = get('location', row)
+            workstream = get('workstream', row)
+            pct_text = get('percentage', row)
+            hours_text = get('hours', row)
+            pct_val = self._extract_numeric_percentage(pct_text)
+            hours_clean = (hours_text or '').replace(',', '').strip()
+            if _re.fullmatch(r"\d{1,3}(?:\.\d{3})+", hours_clean):
+                hours_clean = hours_clean.replace('.', '')
+            hours_val = self._extract_numeric_hours(hours_clean)
+            if pct_val is None and hours_text:
+                pct_val = self._extract_numeric_percentage(hours_text)
+            if hours_val is None and pct_text:
+                hours_val = self._extract_numeric_hours(pct_text)
+            column_values = {str(headers_raw[i]).strip(): (row[i] if i < len(row) else '') for i in range(len(headers_raw))}
+            entries.append({
+                'name': name,
+                'role': role or primary_role or '',
+                'primary_role': primary_role or '',
+                'level': level or '',
+                'workstream': workstream or '',
+                'location': location or '',
+                'percentage': pct_val,
+                'hours': hours_val,
+                'page': page_number,
+                'source_table_index': table_index,
+                'row_index': r_idx,
+                'column_values': column_values,
+            })
+        return entries
+
+    def _to_minimal_staffing(self, di_entries: list) -> list:
+        """Convert DI entries to minimal schema: name, level, title, primary_role, hours, hours_pct."""
+        minimal = []
+        FTE_YEARLY_HOURS = 1800.0
+        for e in di_entries:
+            name = (e.get('name') or '').strip()
+            if name.upper() in {'N/A', 'NA', ''}:
+                name = None
+            level = (e.get('level') or '').strip() or None
+            role = (e.get('role') or '').strip() or None
+            primary_role = (e.get('primary_role') or '').strip() or None
+            title = role or primary_role or level
+            if not title:
+                continue
+            hours = e.get('hours')
+            pct = e.get('percentage')
+            try:
+                hours_val = float(hours) if hours is not None else None
+            except Exception:
+                hours_val = None
+            try:
+                pct_val = float(pct) if pct is not None else None
+            except Exception:
+                pct_val = None
+            if pct_val is not None:
+                pct_val = max(0.0, min(100.0, pct_val))
+                hours_val = (pct_val / 100.0) * FTE_YEARLY_HOURS
+            elif hours_val is not None:
+                pct_val = (hours_val / FTE_YEARLY_HOURS) * 100.0
+            def _round(v):
+                if v is None:
+                    return None
+                try:
+                    return round(float(v), 1)
+                except Exception:
+                    return None
+            minimal.append({
+                'name': name,
+                'level': level,
+                'title': title,
+                'primary_role': primary_role,
+                'hours': _round(hours_val),
+                'hours_pct': _round(pct_val),
+            })
+        return minimal
+
+    def _extract_staffing_via_document_intelligence(self, file_path: Path) -> Dict[str, Any]:
+        """Use Azure Document Intelligence for PDFs to extract staffing entries and minimal schema."""
+        if not _DOCINT_AVAILABLE or file_path.suffix.lower() != '.pdf':
+            return {"entries": [], "minimal": []}
+        try:
+            di = AzureDocumentIntelligenceService()
+            analysis = di.analyze_layout(file_path)
+            tables = analysis.get('tables', [])
+            all_entries = []
+            for idx, table in enumerate(tables, 1):
+                matrix = table.to_matrix()
+                if not matrix or len(matrix) < 2:
+                    continue
+                entries = self._parse_di_table_to_entries(matrix, page_number=table.page_number, table_index=idx)
+                if entries:
+                    all_entries.extend(entries)
+            minimal = self._to_minimal_staffing(all_entries)
+            return {"entries": all_entries, "minimal": minimal}
+        except Exception:
+            return {"entries": [], "minimal": []}
     
     def extract_text_from_file(self, file_path: Path) -> str:
         """Extract text from a local file using PyPDF2 or zipfile"""
@@ -232,8 +524,12 @@ class SOWExtractionService:
         
         self._update_progress("llm_extraction", "Extracting staffing plan with targeted approach...", 60)
         
-        # First, try targeted staffing extraction
-        staffing_plan = await self.extract_staffing_plan_targeted(text)
+        # First, try targeted staffing extraction (best-effort; don't fail pipeline on connection issues)
+        try:
+            staffing_plan = await self.extract_staffing_plan_targeted(text)
+        except Exception as e:
+            self._update_progress("llm_extraction", f"Targeted staffing skipped: {e}", 65)
+            staffing_plan = []
         
         self._update_progress("llm_extraction", "Extracting structured data with GPT-5-mini...", 70)
         
@@ -343,6 +639,10 @@ class SOWExtractionService:
             # Add the pre-extracted staffing plan
             result["staffing_plan"] = staffing_plan
             
+            # Normalize staffing plan allocations to percentages
+            if result.get("staffing_plan"):
+                result["staffing_plan"] = self.normalize_staffing_plan(result["staffing_plan"])
+            
             # Calculate project length if not provided explicitly
             if not result.get("project_length") and result.get("start_date") and result.get("end_date"):
                 calculated_length = self.calculate_project_length(result["start_date"], result["end_date"])
@@ -408,7 +708,7 @@ Look for staffing information in these formats:
 4. Any structured data showing team members, roles, and time allocations
 
 Extract ALL staffing entries found. Each entry should have:
-- name: the person's name or role title
+- name: the person's name or role title (use "N/A" if name not provided)
 - role: the job title, discipline, or department
 - allocation: hours, percentage, FTE, or time allocation
 
@@ -416,11 +716,11 @@ Return ONLY a JSON array. If no staffing information is found, return an empty a
 
 Examples of what to extract:
 - "David Hargis, SVP, 45 hours, 2.50%" → {{"name": "David Hargis", "role": "SVP", "allocation": "45 hours (2.50%)"}}
-- "Vice President Client Services 67" → {{"name": "Vice President", "role": "Client Services", "allocation": "67 hours"}}
+- "Vice President Client Services 67" → {{"name": "N/A", "role": "Vice President, Client Services", "allocation": "67 hours"}}
 - Table rows with Name/Role/Hours columns → extract each row as a separate entry"""
                 
                 response = await self.openai_client.chat.completions.create(
-                    model=os.getenv('AZURE_OPENAI_DEPLOYMENT'),
+                    model="gpt-5-mini",
                     messages=[
                         {'role': 'system', 'content': 'You are a data extraction expert. Extract staffing information and return only valid JSON.'},
                         {'role': 'user', 'content': prompt}
@@ -429,7 +729,10 @@ Examples of what to extract:
                 
                 result = response.choices[0].message.content.strip()
                 import json
-                return json.loads(result)
+                staffing_plan = json.loads(result)
+                
+                # Normalize the extracted staffing plan
+                return self.normalize_staffing_plan(staffing_plan)
             
             return []
             
@@ -557,11 +860,14 @@ Examples of what to extract:
         except Exception as e:
             raise Exception(f"Error listing files: {e}")
     
-    async def process_single_sow(self, file_path: Path) -> ExtractionResult:
+    async def process_single_sow(self, file_path: Path, skip_uploads: bool = False) -> ExtractionResult:
         """Process a single SOW document and extract data"""
         start_time = datetime.now()
         
         try:
+            # Always (re)initialize in the CURRENT event loop to avoid closed-loop issues with async clients
+            await self.initialize()
+            
             self._update_progress("file_processing", f"Processing {file_path.name}...", 10)
             
             # Extract text
@@ -575,18 +881,22 @@ Examples of what to extract:
             # Extract structured data
             self._update_progress("llm_extraction", "Extracting structured data with GPT-5-mini...", 50)
             data = await self.extract_sow_data(file_path.name, text)
+
+            # If PDF, replace staffing_plan with Document Intelligence minimal
+            if file_path.suffix.lower() == '.pdf':
+                di_result = self._extract_staffing_via_document_intelligence(file_path)
+                if di_result.get('minimal'):
+                    data['staffing_plan'] = di_result['minimal']
             
-            # Upload to all three containers
-            self._update_progress("upload", "Uploading files to Azure Storage...", 70)
-            
-            # 1. Upload raw file to sows container
-            await self.upload_raw_file_to_storage(file_path, file_path.name)
-            
-            # 2. Upload extracted text to extracted container
-            await self.upload_extracted_text_to_storage(file_path.name, text)
-            
-            # 3. Upload structured JSON to parsed container
-            await self.upload_json_to_storage(file_path.name, data)
+            # Uploads (optional)
+            if not skip_uploads:
+                self._update_progress("upload", "Uploading files to Azure Storage...", 70)
+                # 1. Upload raw file to sows container
+                await self.upload_raw_file_to_storage(file_path, file_path.name)
+                # 2. Upload extracted text to extracted container
+                await self.upload_extracted_text_to_storage(file_path.name, text)
+                # 3. Upload structured JSON to parsed container
+                await self.upload_json_to_storage(file_path.name, data)
             
             processing_time = (datetime.now() - start_time).total_seconds()
             

@@ -16,8 +16,233 @@ import os
 import sys
 import json
 import pandas as pd
+import re
 from pathlib import Path
 from dotenv import load_dotenv
+import base64
+
+# Load Inter font into the document head
+def _load_inter_font():
+    try:
+        st.markdown(
+            """
+            <link rel="preconnect" href="https://fonts.googleapis.com">
+            <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+            """,
+            unsafe_allow_html=True,
+        )
+    except Exception:
+        pass
+
+# Load custom CSS (visual only)
+def _load_global_styles():
+    styles_path = Path(__file__).parent / "styles.css"
+    if styles_path.exists():
+        try:
+            with open(styles_path, "r", encoding="utf-8") as f:
+                css = f.read()
+            # Safe visual-only injection
+            st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
+        except Exception:
+            pass
+
+# Optional brand logo support
+def _get_logo_path():
+    env_path = os.getenv("APP_LOGO_PATH")
+    if env_path and Path(env_path).exists():
+        return env_path
+    candidate_names = [
+        "octagon_logo.png", "octagon_logo.jpg", "octagon_logo.jpeg",
+        "logo.png", "logo.jpg", "logo.jpeg", "logo.svg"
+    ]
+    for name in candidate_names:
+        p = Path(__file__).parent / "assets" / name
+        if p.exists():
+            return str(p)
+    return None
+
+def render_brand_header():
+    logo_path = _get_logo_path()
+    # Only render text here; logo will be placed in the header bar
+    st.title("Staffing Plan Assistant")
+    st.caption("Process and analyze Statement of Work documents with Azure AI")
+
+def render_header_logo():
+    """Render a centered logo in the fixed header bar."""
+    logo_path = _get_logo_path()
+    if not logo_path:
+        return
+    try:
+        with open(logo_path, "rb") as f:
+            encoded = base64.b64encode(f.read()).decode("utf-8")
+        # Use a CSS pseudo-element to ensure the logo renders inside the header bar
+        st.markdown(
+            f"""
+            <style>
+            header[data-testid='stHeader'] {{ position: relative; min-height: 96px; }}
+            header[data-testid='stHeader']::after {{
+                content: '';
+                position: absolute;
+                left: 50%;
+                transform: translateX(-50%);
+                top: -45px;
+                width: 1000px;
+                height: 200px;
+                background: url('data:image/png;base64,{encoded}') no-repeat center center / contain;
+                pointer-events: none;
+                z-index: 10000;
+            }}
+            </style>
+            """,
+            unsafe_allow_html=True,
+        )
+    except Exception:
+        pass
+
+def render_logo_below_tabs():
+    """Render a centered logo just below the tabs area inside each tab content."""
+    logo_path = _get_logo_path()
+    if not logo_path:
+        return
+    spacer_left, center, spacer_right = st.columns([1, 2, 1])
+    with center:
+        st.image(logo_path, width=120)
+
+def _parse_staffing_item_to_columns(item):
+    """Convert one staffing entry (dict or string) into a normalized row with name, title, allocation.
+
+    Supported string patterns (examples):
+    - "Christine Franklin (EVP Global Account lead): 2%"
+    - "Christine Franklin - EVP Global Account lead - 2%"
+    - "EVP Global Account lead: 2%" (title only)
+    - "Analyst: 900 hours"
+    """
+    if isinstance(item, dict):
+        name = item.get('name') or ''
+        title = item.get('title') or item.get('role') or ''
+        allocation = ''
+        if item.get('hours_pct') is not None:
+            try:
+                allocation = f"{float(item['hours_pct']):.1f}%"
+            except Exception:
+                allocation = str(item['hours_pct'])
+        elif item.get('hours') is not None:
+            try:
+                allocation = f"{float(item['hours']):.0f} hours"
+            except Exception:
+                allocation = f"{item['hours']} hours"
+        return {"name": name, "title": title, "allocation": allocation}
+
+    text = str(item).strip()
+
+    # 1) name (title): 10%
+    m = re.match(r"^\s*([^:(\-]+?)\s*(?:\(([^)]*)\))?\s*:\s*([0-9]+(?:\.[0-9]+)?)\s*%\s*$", text)
+    if m:
+        name, title, pct = m.group(1).strip(), (m.group(2) or '').strip(), m.group(3)
+        return {"name": name, "title": title, "allocation": f"{float(pct):.1f}%"}
+
+    # 2) name - title - 10%
+    m = re.match(r"^\s*([^:]+?)[\s\-–—]+([^:]+?)[\s\-–—]+([0-9]+(?:\.[0-9]+)?)\s*%\s*$", text)
+    if m:
+        return {"name": m.group(1).strip(), "title": m.group(2).strip(), "allocation": f"{float(m.group(3)):.1f}%"}
+
+    # 3) title: 900 hours
+    m = re.match(r"^\s*([^:]+?)\s*:\s*([0-9]+(?:\.[0-9]+)?)\s*(?:hours|hrs)\s*$", text, re.IGNORECASE)
+    if m:
+        return {"name": '', "title": m.group(1).strip(), "allocation": f"{float(m.group(2)):.0f} hours"}
+
+    # Fallback: try to split on ':' or '-' and extract a number with %
+    pct = re.search(r"([0-9]+(?:\.[0-9]+)?)\s*%", text)
+    allocation = f"{pct.group(1)}%" if pct else ''
+    # Try parentheses for title
+    name = text
+    title_match = re.search(r"\(([^)]*)\)", text)
+    title = title_match.group(1).strip() if title_match else ''
+    if title:
+        name = text.split('(')[0].strip().rstrip(':-')
+    else:
+        # Try split by ' - '
+        parts = [p.strip() for p in re.split(r"\s*[\-–—]\s*", text)]
+        if len(parts) >= 2:
+            name, title = parts[0], parts[1]
+    return {"name": name, "title": title, "allocation": allocation}
+
+def _normalize_staffing_plan_to_dataframe(staffing_plan):
+    """Return a pandas DataFrame with Name, Title, Allocation.
+
+    Prefers structured JSON fields when available:
+    - dict with key 'entries' -> uses that list
+    - list of dicts with keys like 'name', 'title', 'primary_role', 'role', 'hours_pct', 'hours'
+    Falls back to parsing strings.
+    """
+    # Coerce JSON strings into Python structures when necessary
+    if isinstance(staffing_plan, str):
+        try:
+            staffing_plan = json.loads(staffing_plan)
+        except Exception:
+            pass
+
+    # If wrapped in an object (e.g., {"entries": [...]})
+    if isinstance(staffing_plan, dict) and isinstance(staffing_plan.get('entries'), list):
+        items = staffing_plan['entries']
+    else:
+        items = staffing_plan or []
+
+    normalized_rows = []
+    for item in items:
+        if isinstance(item, dict) and (item.get('name') or item.get('title') or item.get('role') or item.get('primary_role')):
+            name = (item.get('name') or '').strip()
+            base_title = (item.get('title') or item.get('role') or '').strip()
+            primary_role = (item.get('primary_role') or '').strip()
+            # Prefer combining title and primary_role, but avoid duplicating last names in title
+            title_parts = [p for p in [base_title, primary_role] if p]
+            title = ' — '.join(title_parts)
+            allocation = ''
+            if item.get('hours_pct') is not None:
+                try:
+                    allocation = f"{float(item['hours_pct']):.1f}%"
+                except Exception:
+                    allocation = str(item['hours_pct'])
+            elif item.get('hours') is not None:
+                try:
+                    allocation = f"{float(item['hours']):.0f} hours"
+                except Exception:
+                    allocation = f"{item['hours']} hours"
+            normalized_rows.append({"Name": name, "Title": title, "Allocation": allocation})
+        else:
+            parsed = _parse_staffing_item_to_columns(item)
+            normalized_rows.append({
+                "Name": parsed.get('name', ''),
+                "Title": parsed.get('title', ''),
+                "Allocation": parsed.get('allocation', ''),
+            })
+
+    df = pd.DataFrame(normalized_rows)
+    # Ensure columns exist in correct order
+    for col in ["Name", "Title", "Allocation"]:
+        if col not in df.columns:
+            df[col] = ''
+    df = df[["Name", "Title", "Allocation"]]
+    return df
+
+def _looks_like_structured_staffing(staffing_plan) -> bool:
+    """Heuristically determine if staffing_plan contains structured dict data."""
+    if not staffing_plan:
+        return False
+    plan = staffing_plan
+    if isinstance(plan, str):
+        try:
+            plan = json.loads(plan)
+        except Exception:
+            return False
+    if isinstance(plan, dict) and isinstance(plan.get('entries'), list):
+        return True
+    if isinstance(plan, list) and len(plan) > 0 and isinstance(plan[0], dict):
+        keys = set(plan[0].keys())
+        structured_keys = {"name", "title", "role", "primary_role", "hours", "hours_pct"}
+        return len(keys.intersection(structured_keys)) > 0
+    return False
 
 # Set SSL certificate environment variables to use certifi's certificate bundle
 import certifi
@@ -35,11 +260,15 @@ from hybrid_search_service import get_hybrid_search_service
 
 # Page configuration
 st.set_page_config(
-    page_title="SOW Processing App",
-    page_icon="📋",
+    page_title="Staffing Plan Assistant",
+    page_icon=None,
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+# Apply global styles
+_load_inter_font()
+_load_global_styles()
 
 # Load environment variables
 load_dotenv()
@@ -78,8 +307,7 @@ def process_uploaded_file(uploaded_file, progress_bar, status_text):
         # Initialize service if needed
         service = get_extraction_service()
         if st.session_state.extraction_service is None:
-            # Run async initialization
-            asyncio.run(service.initialize())
+            # Defer initialization into the extraction flow's event loop
             st.session_state.extraction_service = service
         
         # Set progress callback
@@ -89,8 +317,13 @@ def process_uploaded_file(uploaded_file, progress_bar, status_text):
         
         service.set_progress_callback(progress_callback)
         
-        # Process the file (run async function)
-        result = asyncio.run(service.process_single_sow(temp_path))
+        # Process in a fresh loop to ensure Azure clients are created/used within the same loop
+        loop = asyncio.new_event_loop()
+        try:
+            asyncio.set_event_loop(loop)
+            result = loop.run_until_complete(service.process_single_sow(temp_path))
+        finally:
+            loop.close()
         
         # Clean up temp file
         temp_path.unlink()
@@ -102,11 +335,53 @@ def process_uploaded_file(uploaded_file, progress_bar, status_text):
         return None
 
 
-def generate_sow_recommendations(sow_data, client_filter="All Clients", length_filter="All Lengths", top=3):
-    """Generate recommendations based on similar historical SOWs"""
+def normalize_staffing_data(staffing_plan):
+    """Normalize staffing plan data to use percentage-based allocations"""
     try:
-        # Initialize vector search service
-        vector_search_service = get_vector_search_service()
+        # Initialize extraction service to use normalization functions
+        service = get_extraction_service()
+        return service.normalize_staffing_plan(staffing_plan)
+    except Exception as e:
+        st.error(f"Error normalizing staffing data: {e}")
+        return staffing_plan
+
+
+def _ensure_extraction_initialized():
+    """Ensure the SOWExtractionService is initialized (for Azure Storage access)."""
+    service = get_extraction_service()
+    if st.session_state.extraction_service is None:
+        asyncio.run(service.initialize())
+        st.session_state.extraction_service = service
+    return service
+
+
+def fetch_staffing_from_blob(file_name: str):
+    """Fetch staffing_plan from parsed blob when search index lacks it."""
+    try:
+        service = _ensure_extraction_initialized()
+        if not service.blob_service_client:
+            return []
+        container = service.containers.get("parsed", "parsed")
+        blob_name = f"{file_name.replace('.pdf', '').replace('.docx', '')}_parsed.json"
+        async def _download():
+            blob_client = service.blob_service_client.get_blob_client(container=container, blob=blob_name)
+            try:
+                stream = await blob_client.download_blob()
+                text = await stream.content_as_text()
+                data = json.loads(text)
+                return data.get('staffing_plan', [])
+            except Exception:
+                return []
+        return asyncio.run(_download())
+    except Exception:
+        return []
+
+
+def generate_sow_recommendations(sow_data, client_filter="All Clients", length_filter="All Lengths", top=3):
+    """Generate recommendations using HYBRID vector search and return unique SOWs."""
+    try:
+        # Initialize hybrid search service (vector + parsed)
+        hybrid_search_service = get_hybrid_search_service()
         
         # Create search query from SOW data
         search_parts = []
@@ -139,20 +414,23 @@ def generate_sow_recommendations(sow_data, client_filter="All Clients", length_f
         
         filter_expression = " and ".join(filter_parts) if filter_parts else None
         
-        # Perform vector search
-        results = vector_search_service.vector_search(
+        # Perform hybrid search with more candidates, dedup later
+        results = hybrid_search_service.hybrid_vector_search(
             query=search_query,
-            top=top * 2,  # Get more results to filter
+            top=top * 5,
             filter_expression=filter_expression
         )
         
         if results and 'value' in results:
-            # Filter out low-relevance results and format
-            formatted_results = []
+            # Deduplicate by file_name and keep highest hybrid strategy score
+            dedup = {}
             for doc in results['value']:
-                score = doc.get('@search.score', 0.0)
-                if score >= 0.3:  # Only include results with decent relevance
-                    formatted_results.append({
+                key = (doc.get('file_name') or '').strip() or doc.get('id')
+                score = doc.get('strategy_score', doc.get('@search.score', 0.0))
+                if not key:
+                    continue
+                if key not in dedup or score > dedup[key]['relevance_score']:
+                    dedup[key] = {
                         'client_name': doc.get('client_name', 'Unknown'),
                         'project_title': doc.get('project_title', 'No title'),
                         'scope_summary': doc.get('scope_summary', 'No summary'),
@@ -163,11 +441,13 @@ def generate_sow_recommendations(sow_data, client_filter="All Clients", length_f
                         'project_length': doc.get('project_length', ''),
                         'file_name': doc.get('file_name', ''),
                         'extraction_timestamp': doc.get('extraction_timestamp', ''),
-                        'relevance_score': score
-                    })
-            
-            # Return top N results
-            return formatted_results[:top]
+                        'relevance_score': score,
+                        'search_strategy': doc.get('search_strategy', 'hybrid')
+                    }
+
+            # Sort by score and return top N unique
+            unique_sorted = sorted(dedup.values(), key=lambda d: d['relevance_score'], reverse=True)
+            return unique_sorted[:top]
         
         return []
         
@@ -176,10 +456,16 @@ def generate_sow_recommendations(sow_data, client_filter="All Clients", length_f
         return []
 
 
+
+
+
+
+
+
 def main():
     """Main application"""
-    st.title("📋 SOW Processing App")
-    st.markdown("Process and analyze Statement of Work documents")
+    render_header_logo()
+    render_brand_header()
     
     # Sidebar
     with st.sidebar:
@@ -215,14 +501,14 @@ def main():
     
     # Main content tabs
     tab1, tab2, tab3, tab4 = st.tabs([
-        "📤 Upload SOW", 
-        "🤖 Upload + Recommend", 
-        "🔍 Search", 
-        "📝 Standardized Input"
+        "Upload SOW", 
+        "Historical Analog", 
+        "Search", 
+        "Standardized Input"
     ])
     
     with tab1:
-        st.header("📤 Upload SOW (with staffing plan)")
+        st.header("Upload SOW (with staffing plan)")
         st.markdown("Upload a SOW document to extract structured data and staffing information.")
         
         # File upload
@@ -236,7 +522,7 @@ def main():
             col1, col2 = st.columns([1, 1])
             
             with col1:
-                if st.button("🚀 Process SOW", type="primary"):
+                if st.button("Process SOW", type="primary"):
                     # Create progress indicators
                     progress_bar = st.progress(0)
                     status_text = st.text("Initializing...")
@@ -252,7 +538,7 @@ def main():
                         st.session_state.processing_results.append(result)
                         
                         # Display results
-                        st.subheader("📊 Extraction Results")
+                        st.subheader("Extraction Results")
                         
                         col1, col2 = st.columns(2)
                         
@@ -272,50 +558,50 @@ def main():
                             st.write(f"**Processing Time:** {result.processing_time:.2f}s")
                         
                         # Azure Storage upload info
-                        st.subheader("☁️ Azure Storage Uploads")
+                        st.subheader("Azure Storage Uploads")
                         col1, col2, col3 = st.columns(3)
                         
                         with col1:
-                            st.success("✅ Raw File")
+                            st.success("Raw File")
                             st.write(f"**Container:** sows")
                             st.write(f"**File:** {result.file_name}")
                         
                         with col2:
-                            st.success("✅ Extracted Text")
+                            st.success("Extracted Text")
                             st.write(f"**Container:** extracted")
                             st.write(f"**File:** {result.file_name.replace('.pdf', '').replace('.docx', '')}.txt")
                         
                         with col3:
-                            st.success("✅ Structured Data")
+                            st.success("Structured Data")
                             st.write(f"**Container:** parsed")
                             st.write(f"**File:** {result.file_name.replace('.pdf', '').replace('.docx', '')}_parsed.json")
                         
                         # Scope Summary
                         if result.data.get('scope_summary'):
-                            st.subheader("📝 Scope Summary")
+                            st.subheader("Scope Summary")
                             st.write(result.data['scope_summary'])
                         
                         # Deliverables
                         if result.data.get('deliverables'):
-                            st.subheader("🎯 Deliverables")
+                            st.subheader("Deliverables")
                             for i, deliverable in enumerate(result.data['deliverables'], 1):
                                 st.write(f"{i}. {deliverable}")
                         
                         # Staffing Plan
                         if result.data.get('staffing_plan'):
-                            st.subheader("👥 Staffing Plan")
+                            st.subheader("Staffing Plan")
                             staffing_df = pd.DataFrame(result.data['staffing_plan'])
                             st.dataframe(staffing_df, use_container_width=True)
                         
                         # Download options
-                        st.subheader("💾 Download Options")
+                        st.subheader("Download Options")
                         col1, col2, col3 = st.columns(3)
                         
                         with col1:
                             # JSON download
                             json_data = json.dumps(result.data, indent=2)
                             st.download_button(
-                                label="📄 Download JSON",
+                                label="Download JSON",
                                 data=json_data,
                                 file_name=f"{result.file_name}_extracted.json",
                                 mime="application/json"
@@ -327,7 +613,7 @@ def main():
                             excel_filename = service.save_to_spreadsheet([result])
                             with open(excel_filename, 'rb') as f:
                                 st.download_button(
-                                    label="📊 Download Excel",
+                                    label="Download Excel",
                                     data=f.read(),
                                     file_name=excel_filename,
                                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -335,7 +621,7 @@ def main():
                         
                         with col3:
                             # Raw text download (we don't have extracted_text in our data structure)
-                            st.info("📝 Text extraction not available in current version")
+                            st.info("Text extraction not available in current version")
                     
                     else:
                         st.error("❌ Failed to process SOW")
@@ -345,14 +631,14 @@ def main():
                             st.error("No result returned from processing")
             
             with col2:
-                st.info("💡 **Tips for better extraction:**\n"
+                st.info("**Tips for better extraction:**\n"
                        "- Ensure the document has clear section headers\n"
                        "- Include explicit staffing information\n"
                        "- Use standard SOW formats\n"
                        "- Check that dates are in readable format")
     
     with tab2:
-        st.header("🤖 Upload SOW (no staffing plan) → Recommendation")
+        st.header("Upload SOW (no staffing plan) → Recommendation")
         st.markdown("Upload a SOW without staffing information to get AI-powered recommendations based on similar historical SOWs.")
         
         # Initialize session state for this tab
@@ -362,7 +648,7 @@ def main():
             st.session_state.similar_sows = []
         
         # File upload section
-        st.subheader("📤 Upload SOW Document")
+        st.subheader("Upload SOW Document")
         uploaded_file = st.file_uploader(
             "Choose a SOW file (PDF or DOCX)",
             type=['pdf', 'docx'],
@@ -372,21 +658,49 @@ def main():
         
         if uploaded_file is not None:
             # Process the uploaded file
-            if st.button("🚀 Process & Extract Data", type="primary"):
+            if st.button("Process & Extract Data", type="primary"):
                 # Create progress indicators
                 progress_bar = st.progress(0)
                 status_text = st.text("Initializing...")
                 
                 # Process the file using existing extraction service
                 with st.spinner("Processing SOW..."):
-                    result = process_uploaded_file(uploaded_file, progress_bar, status_text)
+                    # Process without uploads for this tab
+                    try:
+                        # Save uploaded file temporarily
+                        temp_path = Path("temp") / uploaded_file.name
+                        temp_path.parent.mkdir(exist_ok=True)
+                        with open(temp_path, "wb") as f:
+                            f.write(uploaded_file.getbuffer())
+
+                        service = get_extraction_service()
+                        if st.session_state.extraction_service is None:
+                            st.session_state.extraction_service = service
+
+                        def progress_callback(progress: ExtractionProgress):
+                            progress_bar.progress(progress.percentage / 100)
+                            status_text.text(f"{progress.stage}: {progress.message}")
+                        service.set_progress_callback(progress_callback)
+
+                        try:
+                            result = asyncio.run(service.process_single_sow(temp_path, skip_uploads=True))
+                        except RuntimeError:
+                            loop = asyncio.new_event_loop()
+                            asyncio.set_event_loop(loop)
+                            result = loop.run_until_complete(service.process_single_sow(temp_path, skip_uploads=True))
+                            loop.close()
+                    finally:
+                        try:
+                            temp_path.unlink()
+                        except Exception:
+                            pass
                 
                 if result and result.success:
-                    st.success("✅ SOW processed successfully!")
+                    st.success("SOW processed successfully!")
                     st.session_state.uploaded_sow_data = result.data
                     
                     # Display extracted data for review
-                    st.subheader("📊 Extracted SOW Data")
+                    st.subheader("Extracted SOW Data")
                     
                     col1, col2 = st.columns(2)
                     
@@ -421,10 +735,8 @@ def main():
                         for i, exclusion in enumerate(result.data['exclusions'], 1):
                             st.write(f"{i}. {exclusion}")
                     
-                    # Show button to proceed to recommendations
+                    # Proceed to recommendations using the button in the Filter Options section below
                     st.markdown("---")
-                    if st.button("🔍 Find Similar Historical SOWs", type="primary"):
-                        st.rerun()
                 
                 else:
                     st.error("❌ Failed to process SOW")
@@ -434,10 +746,10 @@ def main():
         # Similar SOWs recommendation section
         if st.session_state.uploaded_sow_data:
             st.markdown("---")
-            st.subheader("🔍 Similar Historical SOWs")
+            st.subheader("Similar Historical SOWs")
             
             # Filtering options
-            with st.expander("🔧 Filter Options", expanded=False):
+            with st.expander("Filter Options", expanded=False):
                 filter_col1, filter_col2 = st.columns(2)
                 
                 with filter_col1:
@@ -466,27 +778,25 @@ def main():
                     except:
                         selected_length_filter = "All Lengths"
             
-            # Generate recommendations button
-            if st.button("🎯 Generate Recommendations", type="primary"):
+            # Action button: generate with current filters
+            if st.button("Find Similar Historical SOWs", type="primary", key="find_similar_filtered"):
                 with st.spinner("Finding similar historical SOWs..."):
-                    # Generate recommendations using vector search
-                    recommendations = generate_sow_recommendations(
-                        st.session_state.uploaded_sow_data,
-                        client_filter=selected_client_filter,
-                        length_filter=selected_length_filter
-                    )
-                    
-                    if recommendations:
-                        st.session_state.similar_sows = recommendations
-                        st.success(f"✅ Found {len(recommendations)} similar historical SOWs")
-                    else:
-                        st.warning("⚠️ No similar SOWs found. Try adjusting your filters.")
-                        st.session_state.similar_sows = []
+                    try:
+                        recs = generate_sow_recommendations(
+                            st.session_state.uploaded_sow_data,
+                            client_filter=selected_client_filter,
+                            length_filter=selected_length_filter,
+                            top=3
+                        )
+                        st.session_state.similar_sows = recs
+                        st.success(f"✅ Found {len(recs)} similar historical SOWs")
+                    except Exception as e:
+                        st.error(f"❌ Failed to generate recommendations: {e}")
             
             # Display recommendations
             if st.session_state.similar_sows:
                 st.markdown("---")
-                st.subheader(f"📋 Top {len(st.session_state.similar_sows)} Similar SOWs")
+                st.subheader(f"Top {len(st.session_state.similar_sows)} Similar SOWs")
                 
                 for i, similar_sow in enumerate(st.session_state.similar_sows, 1):
                     confidence_score = similar_sow.get('relevance_score', 0.0)
@@ -533,14 +843,18 @@ def main():
                         staffing_plan = similar_sow.get('staffing_plan', [])
                         if staffing_plan:
                             st.markdown("**Staffing Plan (Recommendation Source):**")
-                            staffing_df = pd.DataFrame(staffing_plan)
-                            st.dataframe(staffing_df, use_container_width=True)
+                            try:
+                                staffing_df = _normalize_staffing_plan_to_dataframe(staffing_plan)
+                                st.dataframe(staffing_df, use_container_width=True)
+                            except Exception:
+                                staffing_df = pd.DataFrame(staffing_plan)
+                                st.dataframe(staffing_df, use_container_width=True)
                         else:
                             st.info("No staffing plan available in this historical SOW")
         
         # Information section
         st.markdown("---")
-        with st.expander("ℹ️ How Recommendations Work", expanded=False):
+        with st.expander("How Recommendations Work", expanded=False):
             st.markdown("""
             **Recommendation Process:**
             1. **Upload & Extract**: Your SOW is processed to extract structured data (client, project details, deliverables, etc.)
@@ -554,6 +868,12 @@ def main():
             - Project duration and complexity
             - Technology and methodology used
             
+            **Staffing Data Normalization:**
+            - All staffing allocations are automatically normalized to percentages
+            - Hours are converted using 1800-hour annual basis (1800 hours = 100%)
+            - Examples: 180 hours → 10.0%, 900 hours → 50.0%, 1800 hours → 100.0%
+            - This ensures consistent comparison across all historical SOWs
+            
             **Using Recommendations:**
             - Review the staffing plans from similar historical SOWs
             - Consider the similarity scores (higher = more relevant)
@@ -562,7 +882,7 @@ def main():
             """)
     
     with tab3:
-        st.header("🔍 Search Historical SOWs")
+        st.header("Search Historical SOWs")
         st.markdown("Search through previously processed SOW documents using Azure Search.")
         
         # Initialize search service
@@ -572,32 +892,12 @@ def main():
             
             search_service = st.session_state.search_service
             
-            # Get basic stats
-            with st.spinner("Loading search index..."):
-                stats = search_service.get_stats()
-            
-            # Display stats
-            col1, col2, col3, col4 = st.columns(4)
-            with col1:
-                st.metric("Total SOWs", stats['total_documents'])
-            with col2:
-                st.metric("Unique Clients", stats['clients'])
-            with col3:
-                if stats['date_range']:
-                    st.metric("Date Range", f"{stats['date_range']['earliest']} to {stats['date_range']['latest']}")
-                else:
-                    st.metric("Date Range", "N/A")
-            with col4:
-                st.metric("Search Index", "✅ Active")
-            
-            st.markdown("---")
-            
             # Search interface
             search_col1, search_col2 = st.columns([2, 1])
             
             with search_col1:
                 search_query = st.text_input(
-                    "🔍 Search Query",
+                    "Search Query",
                     placeholder="Enter keywords, client name, project title, or staffing role...",
                     help="Search across all SOW fields including client names, project titles, deliverables, and staffing plans"
                 )
@@ -611,7 +911,7 @@ def main():
             
             # Search method selection
             search_method = st.radio(
-                "🔍 Search Method",
+                "Search Method",
                 ["Hybrid Search (Full Text + Parsed)", "Vector Search (Semantic)", "Basic Search"],
                 help="Choose your search method: Hybrid combines full text and parsed data, Vector uses parsed data only, Basic for exact keyword matches"
             )
@@ -664,7 +964,7 @@ def main():
                         end_date = None
             
             # Search button
-            search_button = st.button("🚀 Search", type="primary", use_container_width=True)
+            search_button = st.button("Search", type="primary", use_container_width=True)
             
             # Perform search
             if search_button and search_query:
@@ -789,7 +1089,7 @@ def main():
             # Display results
             if st.session_state.search_results:
                 st.markdown("---")
-                st.subheader(f"📊 Search Results ({len(st.session_state.search_results)} found)")
+                st.subheader(f"Search Results ({len(st.session_state.search_results)} found)")
                 
                 # Results summary
                 result_summary = st.container()
@@ -799,7 +1099,7 @@ def main():
                 # Display each result
                 for i, result in enumerate(st.session_state.search_results):
                     # Create expander title with search strategy info
-                    expander_title = f"📋 {result['client_name']} - {result['project_title']}"
+                    expander_title = f"{result['client_name']} - {result['project_title']}"
                     if show_strategy and 'search_strategy' in result:
                         strategy = result['search_strategy']
                         score = result.get('strategy_score', result.get('relevance_score', 0.0))
@@ -835,29 +1135,38 @@ def main():
                             st.markdown("**Scope Summary:**")
                             st.write(scope_summary[:500] + "..." if len(scope_summary) > 500 else scope_summary)
                         
-                        # Raw content (for hybrid search)
-                        raw_content = result.get('raw_content', '')
-                        if raw_content and search_method == "Hybrid Search (Full Text + Parsed)":
-                            st.markdown("**Full Document Content:**")
-                            st.write(raw_content[:1000] + "..." if len(raw_content) > 1000 else raw_content)
+                        # Full document content intentionally omitted to keep results concise
                         
-                        # Deliverables preview
+                        # Deliverables with toggle (avoid nested expanders)
                         deliverables = result.get('deliverables', [])
                         if deliverables:
-                            st.markdown("**Deliverables (first 3):**")
-                            for j, deliverable in enumerate(deliverables[:3], 1):
-                                st.write(f"{j}. {deliverable}")
-                            if deliverables_count > 3:
-                                st.write(f"... and {deliverables_count - 3} more")
+                            show_deliverables = st.checkbox(
+                                "Show Deliverables",
+                                value=False,
+                                key=f"show_deliverables_{i}"
+                            )
+                            if show_deliverables:
+                                for j, deliverable in enumerate(deliverables, 1):
+                                    st.write(f"{j}. {deliverable}")
                         
-                        # Staffing preview
+                        # Staffing plan emphasized as table (fallback to blob if needed)
                         staffing_plan = result.get('staffing_plan', [])
+                        # If not structured or missing, fetch from blob as a reliable source
+                        if (not _looks_like_structured_staffing(staffing_plan)) and result.get('file_name'):
+                            blob_plan = fetch_staffing_from_blob(result['file_name'])
+                            if blob_plan:
+                                staffing_plan = blob_plan
                         if staffing_plan:
-                            st.markdown("**Staffing Plan (first 3):**")
-                            for j, staff in enumerate(staffing_plan[:3], 1):
-                                st.write(f"{j}. {staff}")
-                            if staffing_count > 3:
-                                st.write(f"... and {staffing_count - 3} more")
+                            try:
+                                staffing_df = _normalize_staffing_plan_to_dataframe(staffing_plan)
+                                st.markdown("**Staffing Plan:**")
+                                st.dataframe(staffing_df, use_container_width=True)
+                            except Exception:
+                                # Fallback to list rendering
+                                st.markdown("**Staffing Plan:**")
+                                for j, staff in enumerate(staffing_plan, 1):
+                                    parsed = _parse_staffing_item_to_columns(staff)
+                                    st.write(f"{j}. {parsed.get('name','')} - {parsed.get('title','')} {parsed.get('allocation','')}")
                         
                         # Download options for this result
                         st.markdown("**Download Options:**")
@@ -905,7 +1214,7 @@ def main():
             
             # Search explanation
             st.markdown("---")
-            with st.expander("🔍 About Search Methods", expanded=False):
+            with st.expander("About Search Methods", expanded=False):
                 st.markdown("""
                 **Hybrid Search (Full Text + Parsed)**: 
                 - Combines full document text with structured parsed data

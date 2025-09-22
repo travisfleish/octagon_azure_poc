@@ -212,10 +212,18 @@ class VectorSearchService:
             
             if response.status_code == 200:
                 result = response.json()
-                # Add search strategy info to results
+                # Add search strategy info and deduplicate by file_name
+                seen = set()
+                deduped = []
                 for doc in result.get('value', []):
                     doc['search_strategy'] = 'hybrid_search'
                     doc['strategy_score'] = doc.get('@search.score', 0.0)
+                    key = (doc.get('file_name') or '').strip() or doc.get('id')
+                    if key in seen:
+                        continue
+                    seen.add(key)
+                    deduped.append(doc)
+                result['value'] = deduped
                 return result
             else:
                 return {"error": f"Search failed: {response.status_code} - {response.text}"}

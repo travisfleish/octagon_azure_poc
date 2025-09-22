@@ -1,0 +1,82 @@
+{
+  "file": "/Users/travisfleisher/Cursor Project/Octagon/azure_setup/sows/company_1_sow_3.pdf",
+  "pages": 3,
+  "tables_detected": 1,
+  "staffing_entries": [
+    {
+      "name": "David Hargis",
+      "role": "SVP",
+      "primary_role": "",
+      "level": "8",
+      "workstream": "",
+      "location": "US",
+      "percentage": 2.5,
+      "hours": 330.0,
+      "page": 2,
+      "source_table_index": 1,
+      "row_index": 1,
+      "column_values": {
+        "Name": "David Hargis",
+        "Salary Location": "US",
+        "Level": "8",
+        "Title": "SVP",
+        "Billable Hours Per Annum": "1,800",
+        "Hourly Rate Local Curr.": "330",
+        "FX Rate": "1.00000",
+        "Hourly Rate in USD": "",
+        "# Hours": "45",
+        "% Time (Annual)": "2.50%"
+      }
+    },
+    {
+      "name": "Cynthia Soltero",
+      "role": "VP",
+      "primary_role": "",
+      "level": "7",
+      "workstream": "",
+      "location": "US",
+      "percentage": 2.5,
+      "hours": 210.0,
+      "page": 2,
+      "source_table_index": 1,
+      "row_index": 2,
+      "column_values": {
+        "Name": "Cynthia Soltero",
+        "Salary Location": "US",
+        "Level": "7",
+        "Title": "VP",
+        "Billable Hours Per Annum": "1,800",
+        "Hourly Rate Local Curr.": "210",
+        "FX Rate": "1.00000",
+        "Hourly Rate in USD": "",
+        "# Hours": "45",
+        "% Time (Annual)": "2.50%"
+      }
+    },
+    {
+      "name": "Chelsea Pham",
+      "role": "Account Manager",
+      "primary_role": "",
+      "level": "3",
+      "workstream": "",
+      "location": "US",
+      "percentage": 2.0,
+      "hours": 93.0,
+      "page": 2,
+      "source_table_index": 1,
+      "row_index": 3,
+      "column_values": {
+        "Name": "Chelsea Pham",
+        "Salary Location": "US",
+        "Level": "3",
+        "Title": "Account Manager",
+        "Billable Hours Per Annum": "1.800",
+        "Hourly Rate Local Curr.": "93",
+        "FX Rate": "1.00000",
+        "Hourly Rate in USD": "",
+        "# Hours": "36",
+        "% Time (Annual)": "2.00%"
+      }
+    }
+  ]
+}

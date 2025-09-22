@@ -1,0 +1,37 @@
+{
+  "file": "/Users/travisfleisher/Cursor Project/Octagon/azure_setup/sows/company_1_sow_2.pdf",
+  "entries": [
+    {
+      "name": "Christine Franklin",
+      "level": null,
+      "title": "EVP",
+      "primary_role": "Global Account lead",
+      "hours": 36.0,
+      "hours_pct": 2.0
+    },
+    {
+      "name": "Francesca Minorini",
+      "level": null,
+      "title": "VP",
+      "primary_role": "Program and Executive Lead",
+      "hours": 144.0,
+      "hours_pct": 8.0
+    },
+    {
+      "name": "Stephanie Riley",
+      "level": null,
+      "title": "VP",
+      "primary_role": "Culinary Lead",
+      "hours": 90.0,
+      "hours_pct": 5.0
+    },
+    {
+      "name": "Genevieve Courtney",
+      "level": null,
+      "title": "SAM",
+      "primary_role": "Program Day-to-Day and Support",
+      "hours": 180.0,
+      "hours_pct": 10.0
+    }
+  ]
+}

@@ -1,0 +1,175 @@
+/* Import Inter font */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+/* Design tokens */
+:root {
+  --primary: #2B6CB0;
+  --primary-600: #2C5282;
+  --text: #111827;
+  --muted: #6B7280;
+  --bg: #FFFFFF;
+  --bg-alt: #F6F8FB;
+  --border: #E5E7EB;
+  --shadow: 0 4px 14px rgba(0,0,0,0.06);
+  --logo-offset: 120px; /* horizontal shift for header logo */
+}
+
+/* Global typography */
+html, body, .stApp, [class^="css"], [class*=" css"],
+button, input, textarea, select, .stMarkdown, .stText, .stDataFrame {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Oxygen, Ubuntu, Cantarell, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif !important;
+  color: var(--text);
+}
+
+/* Constrain and center main content */
+.block-container {
+  max-width: 1200px;
+  padding-top: 5.25rem;
+}
+
+/* Logo alignment */
+.brand-center { display: flex; justify-content: center; }
+.brand-center img { object-fit: contain; }
+
+/* Shift logo slightly to the right to align with main content center */
+.brand-center.shift-right { transform: translateX(var(--logo-offset)); }
+
+/* On small screens, keep it centered */
+@media (max-width: 768px) {
+  .brand-center.shift-right { transform: translateX(0); }
+}
+
+/* Headings */
+h1, h2, h3, h4 { letter-spacing: -0.01em; }
+h1 { margin-bottom: 0.4rem; }
+h2 { margin-top: 1rem; margin-bottom: 0.35rem; }
+h3 { margin-top: 0.9rem; margin-bottom: 0.25rem; color: var(--primary); }
+
+/* Header bar */
+header[data-testid="stHeader"] {
+  background: linear-gradient(180deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.7) 100%);
+  backdrop-filter: blur(6px);
+  border-bottom: 1px solid var(--border);
+}
+
+/* Centered header logo */
+.global-header-logo {
+  position: fixed;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 99999;
+  pointer-events: none;
+}
+.global-header-logo img {
+  height: 34px;
+  object-fit: contain;
+}
+
+/* Sidebar */
+div[data-testid="stSidebar"] > div:nth-child(1) {
+  background: linear-gradient(180deg, #FFFFFF 0%, #F7FAFC 100%);
+}
+div[data-testid="stSidebar"] section[tabindex] {
+  border-right: 1px solid var(--border);
+}
+
+/* Buttons */
+div.stButton > button,
+div.stDownloadButton > button,
+button[data-testid="baseButton-secondary"],
+button[data-testid="baseButton-primary"] {
+  border-radius: 10px !important;
+  padding: 0.6rem 0.95rem !important;
+  font-weight: 600 !important;
+  border: 1px solid rgba(0,0,0,0.06) !important;
+  box-shadow: var(--shadow) !important;
+}
+
+button[data-testid="baseButton-primary"],
+div.stButton > button[kind="primary"] {
+  background: var(--primary) !important;
+  color: #fff !important;
+}
+
+button[data-testid="baseButton-primary"]:hover,
+div.stButton > button[kind="primary"]:hover {
+  background: var(--primary-600) !important;
+}
+
+/* Tabs */
+div.stTabs [data-baseweb="tab-list"] { gap: 0.25rem; }
+div.stTabs [data-baseweb="tab"] {
+  border-radius: 8px 8px 0 0;
+  padding: 0.55rem 0.95rem;
+  background: var(--bg-alt);
+}
+div.stTabs [data-baseweb="tab"][aria-selected="true"] {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-bottom: none;
+}
+
+/* Expanders */
+details.st-expander {
+  border: 1px solid var(--border) !important;
+  border-radius: 10px !important;
+  box-shadow: var(--shadow);
+  background: #fff;
+}
+details.st-expander > summary {
+  background: #FAFBFC;
+}
+
+/* Metrics */
+div[data-testid="stMetric"] {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: var(--shadow);
+  padding: 0.45rem 0.6rem;
+}
+div[data-testid="stMetric"] label { color: var(--muted); }
+div[data-testid="stMetricLabel"] {
+  font-size: 0.8rem;
+}
+div[data-testid="stMetricValue"] {
+  font-size: 1.1rem;
+  line-height: 1.25;
+  white-space: normal;
+  word-break: break-word;
+}
+
+/* DataFrame */
+div[data-testid="stDataFrame"] {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+}
+
+/* Alerts */
+div[data-testid="stAlert"] {
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+}
+
+/* Section divider utility */
+.section-divider { height: 1px; background: var(--border); margin: 1rem 0; }
+
+/* File uploader */
+div[data-testid="stFileUploaderDropzone"] {
+  border: 2px dashed var(--border);
+  background: #FAFBFC;
+  border-radius: 12px;
+}
+div[data-testid="stFileUploaderDropzone"]:hover {
+  border-color: var(--primary);
+}
+
+/* Progress bar */
+div[role="progressbar"] > div {
+  background: var(--primary) !important;
+}
+
+

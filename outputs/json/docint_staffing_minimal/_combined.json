@@ -1,0 +1,915 @@
+[
+  [
+    [
+      {
+        "file": "/Users/travisfleisher/Cursor Project/Octagon/azure_setup/sows/company_1_sow_2.pdf",
+        "entries": [
+          {
+            "name": "Christine Franklin",
+            "level": null,
+            "title": "EVP",
+            "primary_role": "Global Account lead",
+            "hours": 36.0,
+            "hours_pct": 2.0
+          },
+          {
+            "name": "Francesca Minorini",
+            "level": null,
+            "title": "VP",
+            "primary_role": "Program and Executive Lead",
+            "hours": 144.0,
+            "hours_pct": 8.0
+          },
+          {
+            "name": "Stephanie Riley",
+            "level": null,
+            "title": "VP",
+            "primary_role": "Culinary Lead",
+            "hours": 90.0,
+            "hours_pct": 5.0
+          },
+          {
+            "name": "Genevieve Courtney",
+            "level": null,
+            "title": "SAM",
+            "primary_role": "Program Day-to-Day and Support",
+            "hours": 180.0,
+            "hours_pct": 10.0
+          }
+        ]
+      },
+      {
+        "file": "/Users/travisfleisher/Cursor Project/Octagon/azure_setup/sows/company_1_sow_3.pdf",
+        "entries": []
+      },
+      {
+        "file": "/Users/travisfleisher/Cursor Project/Octagon/azure_setup/sows/company_1_sow_4.pdf",
+        "entries": []
+      },
+      {
+        "file": "/Users/travisfleisher/Cursor Project/Octagon/azure_setup/sows/company_2_sow_1.pdf",
+        "entries": []
+      },
+      {
+        "file": "/Users/travisfleisher/Cursor Project/Octagon/azure_setup/sows/company_2_sow_3.pdf",
+        "entries": []
+      }
+    ],
+    {
+      "file": "/Users/travisfleisher/Cursor Project/Octagon/azure_setup/sows/company_1_sow_2.pdf",
+      "entries": [
+        {
+          "name": "Christine Franklin",
+          "level": null,
+          "title": "EVP",
+          "primary_role": "Global Account lead",
+          "hours": 36.0,
+          "hours_pct": 2.0
+        },
+        {
+          "name": "Francesca Minorini",
+          "level": null,
+          "title": "VP",
+          "primary_role": "Program and Executive Lead",
+          "hours": 144.0,
+          "hours_pct": 8.0
+        },
+        {
+          "name": "Stephanie Riley",
+          "level": null,
+          "title": "VP",
+          "primary_role": "Culinary Lead",
+          "hours": 90.0,
+          "hours_pct": 5.0
+        },
+        {
+          "name": "Genevieve Courtney",
+          "level": null,
+          "title": "SAM",
+          "primary_role": "Program Day-to-Day and Support",
+          "hours": 180.0,
+          "hours_pct": 10.0
+        }
+      ]
+    },
+    {
+      "file": "/Users/travisfleisher/Cursor Project/Octagon/azure_setup/sows/company_1_sow_3.pdf",
+      "entries": [
+        {
+          "name": "David Hargis",
+          "level": "8",
+          "title": "SVP",
+          "primary_role": null,
+          "hours": 45.0,
+          "hours_pct": 2.5
+        },
+        {
+          "name": "Cynthia Soltero",
+          "level": "7",
+          "title": "VP",
+          "primary_role": null,
+          "hours": 45.0,
+          "hours_pct": 2.5
+        },
+        {
+          "name": "Chelsea Pham",
+          "level": "3",
+          "title": "Account Manager",
+          "primary_role": null,
+          "hours": 36.0,
+          "hours_pct": 2.0
+        },
+        {
+          "name": null,
+          "level": null,
+          "title": "Total SOW Amount",
+          "primary_role": null,
+          "hours": 126.0,
+          "hours_pct": 7.0
+        }
+      ]
+    },
+    {
+      "file": "/Users/travisfleisher/Cursor Project/Octagon/azure_setup/sows/company_1_sow_4.pdf",
+      "entries": [
+        {
+          "name": "Noah Kolodny",
+          "level": "8",
+          "title": "SVP",
+          "primary_role": null,
+          "hours": 54.0,
+          "hours_pct": 3.0
+        },
+        {
+          "name": "TBC",
+          "level": "5",
+          "title": "Account Director",
+          "primary_role": null,
+          "hours": 180.0,
+          "hours_pct": 10.0
+        },
+        {
+          "name": "TBC",
+          "level": "2",
+          "title": "Strategist / SAE",
+          "primary_role": null,
+          "hours": 180.0,
+          "hours_pct": 10.0
+        },
+        {
+          "name": "Carolyn Ruther",
+          "level": "6",
+          "title": "Sr. Experiential Director",
+          "primary_role": null,
+          "hours": 190.1,
+          "hours_pct": 10.6
+        },
+        {
+          "name": "Leah Zarrilli",
+          "level": "3",
+          "title": "Experiential Manager",
+          "primary_role": null,
+          "hours": 360.0,
+          "hours_pct": 20.0
+        },
+        {
+          "name": "TBC",
+          "level": "2",
+          "title": "Presentation Designer",
+          "primary_role": null,
+          "hours": 45.0,
+          "hours_pct": 2.5
+        },
+        {
+          "name": null,
+          "level": null,
+          "title": "Total SOV Amount",
+          "primary_role": null,
+          "hours": 1009.1,
+          "hours_pct": 56.1
+        }
+      ]
+    },
+    {
+      "file": "/Users/travisfleisher/Cursor Project/Octagon/azure_setup/sows/company_2_sow_1.pdf",
+      "entries": []
+    },
+    {
+      "file": "/Users/travisfleisher/Cursor Project/Octagon/azure_setup/sows/company_2_sow_3.pdf",
+      "entries": []
+    }
+  ],
+  {
+    "file": "/Users/travisfleisher/Cursor Project/Octagon/azure_setup/sows/company_1_sow_2.pdf",
+    "entries": [
+      {
+        "name": "Christine Franklin",
+        "level": null,
+        "title": "EVP",
+        "primary_role": "Global Account lead",
+        "hours": 36.0,
+        "hours_pct": 2.0
+      },
+      {
+        "name": "Francesca Minorini",
+        "level": null,
+        "title": "VP",
+        "primary_role": "Program and Executive Lead",
+        "hours": 144.0,
+        "hours_pct": 8.0
+      },
+      {
+        "name": "Stephanie Riley",
+        "level": null,
+        "title": "VP",
+        "primary_role": "Culinary Lead",
+        "hours": 90.0,
+        "hours_pct": 5.0
+      },
+      {
+        "name": "Genevieve Courtney",
+        "level": null,
+        "title": "SAM",
+        "primary_role": "Program Day-to-Day and Support",
+        "hours": 180.0,
+        "hours_pct": 10.0
+      }
+    ]
+  },
+  {
+    "file": "/Users/travisfleisher/Cursor Project/Octagon/azure_setup/sows/company_1_sow_3.pdf",
+    "entries": [
+      {
+        "name": "David Hargis",
+        "level": "8",
+        "title": "SVP",
+        "primary_role": null,
+        "hours": 45.0,
+        "hours_pct": 2.5
+      },
+      {
+        "name": "Cynthia Soltero",
+        "level": "7",
+        "title": "VP",
+        "primary_role": null,
+        "hours": 45.0,
+        "hours_pct": 2.5
+      },
+      {
+        "name": "Chelsea Pham",
+        "level": "3",
+        "title": "Account Manager",
+        "primary_role": null,
+        "hours": 36.0,
+        "hours_pct": 2.0
+      }
+    ]
+  },
+  {
+    "file": "/Users/travisfleisher/Cursor Project/Octagon/azure_setup/sows/company_1_sow_4.pdf",
+    "entries": [
+      {
+        "name": "Noah Kolodny",
+        "level": "8",
+        "title": "SVP",
+        "primary_role": null,
+        "hours": 54.0,
+        "hours_pct": 3.0
+      },
+      {
+        "name": "TBC",
+        "level": "5",
+        "title": "Account Director",
+        "primary_role": null,
+        "hours": 180.0,
+        "hours_pct": 10.0
+      },
+      {
+        "name": "TBC",
+        "level": "2",
+        "title": "Strategist / SAE",
+        "primary_role": null,
+        "hours": 180.0,
+        "hours_pct": 10.0
+      },
+      {
+        "name": "Carolyn Ruther",
+        "level": "6",
+        "title": "Sr. Experiential Director",
+        "primary_role": null,
+        "hours": 190.1,
+        "hours_pct": 10.6
+      },
+      {
+        "name": "Leah Zarrilli",
+        "level": "3",
+        "title": "Experiential Manager",
+        "primary_role": null,
+        "hours": 360.0,
+        "hours_pct": 20.0
+      },
+      {
+        "name": "TBC",
+        "level": "2",
+        "title": "Presentation Designer",
+        "primary_role": null,
+        "hours": 45.0,
+        "hours_pct": 2.5
+      }
+    ]
+  },
+  {
+    "file": "/Users/travisfleisher/Cursor Project/Octagon/azure_setup/sows/company_2_sow_1.pdf",
+    "entries": [
+      {
+        "name": null,
+        "level": "EVP",
+        "title": "EVP",
+        "primary_role": null,
+        "hours": 18.0,
+        "hours_pct": 1.0
+      },
+      {
+        "name": null,
+        "level": "VP",
+        "title": "VP",
+        "primary_role": null,
+        "hours": 900.0,
+        "hours_pct": 50.0
+      },
+      {
+        "name": null,
+        "level": "AD",
+        "title": "AD",
+        "primary_role": null,
+        "hours": 1800.0,
+        "hours_pct": 100.0
+      },
+      {
+        "name": null,
+        "level": "SAE",
+        "title": "SAE",
+        "primary_role": null,
+        "hours": 1800.0,
+        "hours_pct": 100.0
+      },
+      {
+        "name": null,
+        "level": "AM",
+        "title": "AM",
+        "primary_role": null,
+        "hours": 144.0,
+        "hours_pct": 8.0
+      },
+      {
+        "name": null,
+        "level": "VP",
+        "title": "VP",
+        "primary_role": null,
+        "hours": 540.0,
+        "hours_pct": 30.0
+      },
+      {
+        "name": null,
+        "level": "AD",
+        "title": "AD",
+        "primary_role": null,
+        "hours": 900.0,
+        "hours_pct": 50.0
+      },
+      {
+        "name": null,
+        "level": "AD",
+        "title": "AD",
+        "primary_role": null,
+        "hours": 900.0,
+        "hours_pct": 50.0
+      },
+      {
+        "name": null,
+        "level": "AD",
+        "title": "AD",
+        "primary_role": null,
+        "hours": 450.0,
+        "hours_pct": 25.0
+      },
+      {
+        "name": null,
+        "level": "AM",
+        "title": "AM",
+        "primary_role": null,
+        "hours": 1800.0,
+        "hours_pct": 100.0
+      },
+      {
+        "name": null,
+        "level": "AM",
+        "title": "AM",
+        "primary_role": null,
+        "hours": 468.0,
+        "hours_pct": 26.0
+      },
+      {
+        "name": null,
+        "level": "AD",
+        "title": "AD",
+        "primary_role": null,
+        "hours": 234.0,
+        "hours_pct": 13.0
+      }
+    ]
+  },
+  {
+    "file": "/Users/travisfleisher/Cursor Project/Octagon/azure_setup/sows/company_2_sow_3.pdf",
+    "entries": [
+      {
+        "name": "Derek Aframe",
+        "level": "EVP",
+        "title": "EVP",
+        "primary_role": null,
+        "hours": 90.0,
+        "hours_pct": 5.0
+      },
+      {
+        "name": "Hannah Woodfin",
+        "level": "VP",
+        "title": "VP",
+        "primary_role": null,
+        "hours": 900.0,
+        "hours_pct": 50.0
+      },
+      {
+        "name": "Sarah Brokenshire Hubner",
+        "level": "GD",
+        "title": "GD",
+        "primary_role": null,
+        "hours": 1800.0,
+        "hours_pct": 100.0
+      },
+      {
+        "name": "AD FIFA PMO Lead",
+        "level": "AD",
+        "title": "AD",
+        "primary_role": null,
+        "hours": 1800.0,
+        "hours_pct": 100.0
+      },
+      {
+        "name": "Max Boekelmann Market / Toolkit Lead",
+        "level": "AM",
+        "title": "AM",
+        "primary_role": null,
+        "hours": 1800.0,
+        "hours_pct": 100.0
+      },
+      {
+        "name": "AE FCWC / FWC Approvals",
+        "level": "AE",
+        "title": "AE",
+        "primary_role": null,
+        "hours": 1800.0,
+        "hours_pct": 100.0
+      },
+      {
+        "name": "GD - Tennis / Other Platforms",
+        "level": "GD",
+        "title": "GD",
+        "primary_role": null,
+        "hours": 270.0,
+        "hours_pct": 15.0
+      },
+      {
+        "name": "Caitlin Blankenship Tennis PMO",
+        "level": "AD",
+        "title": "AD",
+        "primary_role": null,
+        "hours": 1440.0,
+        "hours_pct": 80.0
+      },
+      {
+        "name": "AD Tennis Local XM FRA Support - FABIEN",
+        "level": "AD",
+        "title": "AD",
+        "primary_role": null,
+        "hours": 1350.0,
+        "hours_pct": 75.0
+      },
+      {
+        "name": "AD Tennis Local UK Support -Kat",
+        "level": "AD",
+        "title": "AD",
+        "primary_role": null,
+        "hours": 450.0,
+        "hours_pct": 25.0
+      },
+      {
+        "name": "AM Finance",
+        "level": "AM",
+        "title": "AM",
+        "primary_role": null,
+        "hours": 324.0,
+        "hours_pct": 18.0
+      },
+      {
+        "name": "Alice Christie",
+        "level": "VP",
+        "title": "VP",
+        "primary_role": null,
+        "hours": 540.0,
+        "hours_pct": 30.0
+      },
+      {
+        "name": "Svetlana Hanau",
+        "level": "VP",
+        "title": "VP",
+        "primary_role": null,
+        "hours": 1350.0,
+        "hours_pct": 75.0
+      },
+      {
+        "name": "Ted Murphy",
+        "level": "AM",
+        "title": "AM",
+        "primary_role": null,
+        "hours": 882.0,
+        "hours_pct": 49.0
+      },
+      {
+        "name": "AM FWC Hospo (100% from april)",
+        "level": "AM",
+        "title": "AM",
+        "primary_role": null,
+        "hours": 1800.0,
+        "hours_pct": 100.0
+      },
+      {
+        "name": "Marina T",
+        "level": "AM",
+        "title": "AM",
+        "primary_role": null,
+        "hours": 900.0,
+        "hours_pct": 50.0
+      },
+      {
+        "name": "Strategic Operations, System, Tools, Compliance (All Projects)",
+        "level": "AD",
+        "title": "AD",
+        "primary_role": null,
+        "hours": 684.0,
+        "hours_pct": 38.0
+      },
+      {
+        "name": "Phil Duffy - AD Stella Program Oversight (Jan - Aug)",
+        "level": "AD",
+        "title": "AD",
+        "primary_role": null,
+        "hours": 900.0,
+        "hours_pct": 50.0
+      },
+      {
+        "name": "SAM WIMB Project Hosp (Feb - Aug) - HENRY",
+        "level": "SAM",
+        "title": "SAM",
+        "primary_role": null,
+        "hours": 1350.0,
+        "hours_pct": 75.0
+      },
+      {
+        "name": "SAM RG Project Hosp (Feb - Jul)",
+        "level": "SAM",
+        "title": "SAM",
+        "primary_role": null,
+        "hours": 1350.0,
+        "hours_pct": 75.0
+      },
+      {
+        "name": "NBA Continuation of work / close out",
+        "level": "AD",
+        "title": "AD",
+        "primary_role": null,
+        "hours": 0.0,
+        "hours_pct": 0.0
+      },
+      {
+        "name": "Derek Aframe",
+        "level": "EVP",
+        "title": "EVP",
+        "primary_role": null,
+        "hours": null,
+        "hours_pct": null
+      },
+      {
+        "name": "Hannah Woodfin",
+        "level": "VP",
+        "title": "VP",
+        "primary_role": null,
+        "hours": null,
+        "hours_pct": null
+      },
+      {
+        "name": "Sarah Brokenshire Hubner",
+        "level": "GD",
+        "title": "GD",
+        "primary_role": null,
+        "hours": null,
+        "hours_pct": null
+      },
+      {
+        "name": "AD FIFA PMO Lead",
+        "level": "AD",
+        "title": "AD",
+        "primary_role": null,
+        "hours": null,
+        "hours_pct": null
+      },
+      {
+        "name": "Max Boekelmann Market / Toolkit Lead",
+        "level": "AM",
+        "title": "AM",
+        "primary_role": null,
+        "hours": null,
+        "hours_pct": null
+      },
+      {
+        "name": "AE FCWC / FWC Approvals",
+        "level": "AE",
+        "title": "AE",
+        "primary_role": null,
+        "hours": null,
+        "hours_pct": null
+      },
+      {
+        "name": "GD - Music / NBA / Stella",
+        "level": "GD",
+        "title": "GD",
+        "primary_role": null,
+        "hours": null,
+        "hours_pct": null
+      },
+      {
+        "name": "Caitlin Blankenship Tennis PMO",
+        "level": "AD",
+        "title": "AD",
+        "primary_role": null,
+        "hours": null,
+        "hours_pct": null
+      },
+      {
+        "name": "AD Tennis Local XM FRA Support - FABIEN",
+        "level": "AD",
+        "title": "AD",
+        "primary_role": null,
+        "hours": null,
+        "hours_pct": null
+      },
+      {
+        "name": "AD Tennis Local UK Support -Kat",
+        "level": "AD",
+        "title": "AD",
+        "primary_role": null,
+        "hours": null,
+        "hours_pct": null
+      },
+      {
+        "name": "AM Finance",
+        "level": "AM",
+        "title": "AM",
+        "primary_role": null,
+        "hours": null,
+        "hours_pct": null
+      },
+      {
+        "name": "Alice Christie",
+        "level": "VP",
+        "title": "VP",
+        "primary_role": null,
+        "hours": null,
+        "hours_pct": null
+      },
+      {
+        "name": "Svetlana Hanau",
+        "level": "VP",
+        "title": "VP",
+        "primary_role": null,
+        "hours": null,
+        "hours_pct": null
+      },
+      {
+        "name": "Ted Murphy",
+        "level": "AM",
+        "title": "AM",
+        "primary_role": null,
+        "hours": null,
+        "hours_pct": null
+      },
+      {
+        "name": "AM FWC Hospo",
+        "level": "AM",
+        "title": "AM",
+        "primary_role": null,
+        "hours": null,
+        "hours_pct": null
+      },
+      {
+        "name": "Marina T",
+        "level": "AM",
+        "title": "AM",
+        "primary_role": null,
+        "hours": null,
+        "hours_pct": null
+      },
+      {
+        "name": "Strategic Operations, System, Tools, Compliance (All Projects)",
+        "level": "AD",
+        "title": "AD",
+        "primary_role": null,
+        "hours": null,
+        "hours_pct": null
+      },
+      {
+        "name": "Phil Duffy - AD Stella Program Oversight (Jan - Aug)",
+        "level": "AD",
+        "title": "AD",
+        "primary_role": null,
+        "hours": null,
+        "hours_pct": null
+      },
+      {
+        "name": "SAM WIMB Project Hosp (Feb - Aug) - HENRY",
+        "level": "SAM",
+        "title": "SAM",
+        "primary_role": null,
+        "hours": null,
+        "hours_pct": null
+      },
+      {
+        "name": "SAM RG Project Hosp (Feb - Jul)",
+        "level": "SAM",
+        "title": "SAM",
+        "primary_role": null,
+        "hours": null,
+        "hours_pct": null
+      },
+      {
+        "name": "Derek Aframe",
+        "level": "EVP",
+        "title": "EVP",
+        "primary_role": null,
+        "hours": null,
+        "hours_pct": null
+      },
+      {
+        "name": "Hannah Woodfin",
+        "level": "VP",
+        "title": "VP",
+        "primary_role": null,
+        "hours": null,
+        "hours_pct": null
+      },
+      {
+        "name": "Sarah Brokenshire Hubner",
+        "level": "GD",
+        "title": "GD",
+        "primary_role": null,
+        "hours": null,
+        "hours_pct": null
+      },
+      {
+        "name": "AD FIFA PMO Lead",
+        "level": "AD",
+        "title": "AD",
+        "primary_role": null,
+        "hours": null,
+        "hours_pct": null
+      },
+      {
+        "name": "Max Boekelmann Market / Toolkit Lead",
+        "level": "AM",
+        "title": "AM",
+        "primary_role": null,
+        "hours": null,
+        "hours_pct": null
+      },
+      {
+        "name": "AE FCWC / FWC Approvals",
+        "level": "AE",
+        "title": "AE",
+        "primary_role": null,
+        "hours": null,
+        "hours_pct": null
+      },
+      {
+        "name": "GD - Music / NBA / Stella",
+        "level": "GD",
+        "title": "GD",
+        "primary_role": null,
+        "hours": null,
+        "hours_pct": null
+      },
+      {
+        "name": "Caitlin Blankenship Tennis PMO",
+        "level": "AD",
+        "title": "AD",
+        "primary_role": null,
+        "hours": null,
+        "hours_pct": null
+      },
+      {
+        "name": "AD Tennis Local XM FRA Support - FABIEN",
+        "level": "AD",
+        "title": "AD",
+        "primary_role": null,
+        "hours": null,
+        "hours_pct": null
+      },
+      {
+        "name": "AD Tennis Local UK Support -Kat",
+        "level": "AD",
+        "title": "AD",
+        "primary_role": null,
+        "hours": null,
+        "hours_pct": null
+      },
+      {
+        "name": "AM Finance",
+        "level": "AM",
+        "title": "AM",
+        "primary_role": null,
+        "hours": null,
+        "hours_pct": null
+      },
+      {
+        "name": "Alice Christie",
+        "level": "VP",
+        "title": "VP",
+        "primary_role": null,
+        "hours": null,
+        "hours_pct": null
+      },
+      {
+        "name": "Svetlana Hanau",
+        "level": "VP",
+        "title": "VP",
+        "primary_role": null,
+        "hours": null,
+        "hours_pct": null
+      },
+      {
+        "name": "Ted Murphy",
+        "level": "AM",
+        "title": "AM",
+        "primary_role": null,
+        "hours": null,
+        "hours_pct": null
+      },
+      {
+        "name": "AM FWC Hospo",
+        "level": "AM",
+        "title": "AM",
+        "primary_role": null,
+        "hours": null,
+        "hours_pct": null
+      },
+      {
+        "name": "Marina T",
+        "level": "AM",
+        "title": "AM",
+        "primary_role": null,
+        "hours": null,
+        "hours_pct": null
+      },
+      {
+        "name": "Strategic Operations, System, Tools, Compliance (All Projects)",
+        "level": "AD",
+        "title": "AD",
+        "primary_role": null,
+        "hours": null,
+        "hours_pct": null
+      },
+      {
+        "name": "Phil Duffy - AD Stella Program Oversight (Jan - Aug)",
+        "level": "AD",
+        "title": "AD",
+        "primary_role": null,
+        "hours": null,
+        "hours_pct": null
+      },
+      {
+        "name": "SAM WIMB Project Hosp (Feb - Aug) - HENRY",
+        "level": "SAM",
+        "title": "SAM",
+        "primary_role": null,
+        "hours": null,
+        "hours_pct": null
+      },
+      {
+        "name": "SAM RG Project Hosp (Feb - Jul)",
+        "level": "SAM",
+        "title": "SAM",
+        "primary_role": null,
+        "hours": null,
+        "hours_pct": null
+      }
+    ]
+  }
+]

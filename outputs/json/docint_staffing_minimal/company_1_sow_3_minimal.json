@@ -1,0 +1,29 @@
+{
+  "file": "/Users/travisfleisher/Cursor Project/Octagon/azure_setup/sows/company_1_sow_3.pdf",
+  "entries": [
+    {
+      "name": "David Hargis",
+      "level": "8",
+      "title": "SVP",
+      "primary_role": null,
+      "hours": 45.0,
+      "hours_pct": 2.5
+    },
+    {
+      "name": "Cynthia Soltero",
+      "level": "7",
+      "title": "VP",
+      "primary_role": null,
+      "hours": 45.0,
+      "hours_pct": 2.5
+    },
+    {
+      "name": "Chelsea Pham",
+      "level": "3",
+      "title": "Account Manager",
+      "primary_role": null,
+      "hours": 36.0,
+      "hours_pct": 2.0
+    }
+  ]
+}

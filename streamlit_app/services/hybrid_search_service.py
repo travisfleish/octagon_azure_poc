@@ -135,13 +135,20 @@ class HybridSearchService:
                             existing_doc['search_strategy'] = 'hybrid_combined'
                             break
         
-        # Sort by combined score
-        all_results.sort(key=lambda x: x.get('strategy_score', 0.0), reverse=True)
+        # Deduplicate by file_name (fallback to id) keeping the highest score
+        dedup: Dict[str, Any] = {}
+        for doc in all_results:
+            key = (doc.get('file_name') or '').strip() or doc.get('id')
+            if key not in dedup or doc.get('strategy_score', 0.0) > dedup[key].get('strategy_score', 0.0):
+                dedup[key] = doc
+
+        deduped_results = list(dedup.values())
+        deduped_results.sort(key=lambda x: x.get('strategy_score', 0.0), reverse=True)
         
         # Return top results
         return {
-            'value': all_results[:top],
-            '@odata.count': len(all_results)
+            'value': deduped_results[:top],
+            '@odata.count': len(deduped_results)
         }
     
     def full_text_vector_search(
