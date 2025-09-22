@@ -26,7 +26,8 @@ def load_environment():
 def test_search():
     """Test basic search functionality"""
     search_endpoint, search_key = load_environment()
-    index_name = "octagon-sows-parsed"
+    # Use the vector index we populated
+    index_name = "octagon-sows-vector"
     
     # Test 1: Search for "Company 2"
     print("🔍 Test 1: Searching for 'Company 2'")
@@ -84,10 +85,10 @@ def test_search():
     
     print("\n" + "="*50)
     
-    # Test 3: Search for "Project Management" in staffing
-    print("🔍 Test 3: Searching for 'Project Management' in staffing")
+    # Test 3: Search for a specific normalized staffing line
+    print("🔍 Test 3: Searching for 'Senior Vice President 45 2.5%' in staffing")
     payload = {
-        "search": "Project Management",
+        "search": "Senior Vice President 45 2.5%",
         "searchFields": "staffing_plan",
         "top": 5,
         "count": True
@@ -104,8 +105,8 @@ def test_search():
                 print(f"  {i}. {doc.get('client_name')} - {doc.get('project_title')}")
                 # Show staffing info
                 staffing = doc.get('staffing_plan', [])
-                for staff in staffing[:2]:  # Show first 2 staffing entries
-                    if 'Project Management' in staff:
+                for staff in staffing[:5]:
+                    if any(k in staff for k in ["Senior Vice President", "2.5%", "45.0"]):
                         print(f"     Staffing: {staff}")
         else:
             print(f"❌ Search failed: {response.status_code} - {response.text}")

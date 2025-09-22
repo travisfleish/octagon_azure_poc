@@ -29,7 +29,8 @@ class VectorSearchService:
         self.openai_api_key = None
         self.openai_endpoint = None
         self.openai_deployment = None
-        self.index_name = "octagon-sows-vector"
+        # Use the hybrid index which contains vector fields
+        self.index_name = "octagon-sows-hybrid"
         self._load_environment()
     
     def _load_environment(self):
@@ -79,7 +80,7 @@ class VectorSearchService:
     def vector_search(
         self, 
         query: str, 
-        vector_field: str = "content_vector",
+        vector_field: str = "parsed_content_vector",
         top: int = 10,
         skip: int = 0,
         filter_expression: Optional[str] = None
@@ -132,10 +133,18 @@ class VectorSearchService:
             
             if response.status_code == 200:
                 result = response.json()
-                # Add search strategy info to results
+                # Add search strategy info and deduplicate by stable key
+                seen = set()
+                deduped = []
                 for doc in result.get('value', []):
                     doc['search_strategy'] = 'vector_search'
                     doc['strategy_score'] = doc.get('@search.score', 0.0)
+                    key = (doc.get('file_name') or '').strip() or doc.get('id')
+                    if key in seen:
+                        continue
+                    seen.add(key)
+                    deduped.append(doc)
+                result['value'] = deduped
                 return result
             else:
                 return {"error": f"Search failed: {response.status_code} - {response.text}"}

@@ -21,7 +21,7 @@ class AzureSearchService:
     def __init__(self):
         self.search_endpoint = None
         self.search_key = None
-        self.index_name = "octagon-sows-parsed"
+        self.index_name = "octagon-sows-hybrid"
         self._load_environment()
     
     def _load_environment(self):
@@ -174,7 +174,7 @@ class AzureSearchService:
         
         clients = set()
         for doc in results.get('value', []):
-            client = doc.get('client_name', '').strip()
+            client = (doc.get('client_name') or '').strip()
             if client:
                 clients.add(client)
         
@@ -188,7 +188,7 @@ class AzureSearchService:
         
         lengths = set()
         for doc in results.get('value', []):
-            length = doc.get('project_length', '').strip()
+            length = (doc.get('project_length') or '').strip()
             if length:
                 lengths.add(length)
         
@@ -206,7 +206,7 @@ class AzureSearchService:
         # Count unique clients
         clients = set()
         for doc in documents:
-            client = doc.get('client_name', '').strip()
+            client = (doc.get('client_name') or '').strip()
             if client:
                 clients.add(client)
         

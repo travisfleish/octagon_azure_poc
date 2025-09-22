@@ -21,6 +21,14 @@ from pathlib import Path
 from dotenv import load_dotenv
 import base64
 
+# Page configuration - MUST be first Streamlit call
+st.set_page_config(
+    page_title="Staffing Plan Assistant",
+    page_icon=None,
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
 # Load Inter font into the document head
 def _load_inter_font():
     try:
@@ -258,13 +266,6 @@ from vector_search_service import get_vector_search_service
 from hybrid_search_service import get_hybrid_search_service
 
 
-# Page configuration
-st.set_page_config(
-    page_title="Staffing Plan Assistant",
-    page_icon=None,
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
 
 # Apply global styles
 _load_inter_font()
@@ -358,21 +359,27 @@ def _ensure_extraction_initialized():
 def fetch_staffing_from_blob(file_name: str):
     """Fetch staffing_plan from parsed blob when search index lacks it."""
     try:
-        service = _ensure_extraction_initialized()
-        if not service.blob_service_client:
+        from azure.identity import DefaultAzureCredential
+        from azure.storage.blob import BlobServiceClient
+        
+        # Get storage account URL from environment
+        storage_account_url = os.getenv('AZURE_STORAGE_ACCOUNT_URL')
+        if not storage_account_url:
             return []
-        container = service.containers.get("parsed", "parsed")
+        
+        # Initialize synchronous blob client
+        cred = DefaultAzureCredential()
+        blob_service_client = BlobServiceClient(account_url=storage_account_url, credential=cred)
+        
         blob_name = f"{file_name.replace('.pdf', '').replace('.docx', '')}_parsed.json"
-        async def _download():
-            blob_client = service.blob_service_client.get_blob_client(container=container, blob=blob_name)
-            try:
-                stream = await blob_client.download_blob()
-                text = await stream.content_as_text()
-                data = json.loads(text)
-                return data.get('staffing_plan', [])
-            except Exception:
-                return []
-        return asyncio.run(_download())
+        blob_client = blob_service_client.get_blob_client(container="parsed", blob=blob_name)
+        
+        # Download blob content synchronously
+        blob_data = blob_client.download_blob()
+        content = blob_data.readall()
+        data = json.loads(content.decode('utf-8'))
+        
+        return data.get('staffing_plan', [])
     except Exception:
         return []
 
@@ -430,12 +437,16 @@ def generate_sow_recommendations(sow_data, client_filter="All Clients", length_f
                 if not key:
                     continue
                 if key not in dedup or score > dedup[key]['relevance_score']:
+                    # Prefer structured staffing data from blob hydration, fallback to search index data
+                    staffing_plan = doc.get('staffing_plan_structured') or doc.get('staffing_plan', [])
+                    
                     dedup[key] = {
                         'client_name': doc.get('client_name', 'Unknown'),
                         'project_title': doc.get('project_title', 'No title'),
                         'scope_summary': doc.get('scope_summary', 'No summary'),
                         'deliverables': doc.get('deliverables', []),
-                        'staffing_plan': doc.get('staffing_plan', []),
+                        'staffing_plan': staffing_plan,
+                        'staffing_plan_structured': doc.get('staffing_plan_structured'),
                         'start_date': doc.get('start_date', ''),
                         'end_date': doc.get('end_date', ''),
                         'project_length': doc.get('project_length', ''),
@@ -648,7 +659,6 @@ def main():
             st.session_state.similar_sows = []
         
         # File upload section
-        st.subheader("Upload SOW Document")
         uploaded_file = st.file_uploader(
             "Choose a SOW file (PDF or DOCX)",
             type=['pdf', 'docx'],
@@ -840,15 +850,35 @@ def main():
                                 st.write(f"... and {len(deliverables) - 5} more")
                         
                         # Staffing plan (this is what we're recommending from)
-                        staffing_plan = similar_sow.get('staffing_plan', [])
+                        # Prefer structured plan hydrated from blob if available
+                        staffing_plan = similar_sow.get('staffing_plan_structured') or similar_sow.get('staffing_plan', [])
+                        # If not structured or missing, fetch from blob as a reliable source
+                        if (not _looks_like_structured_staffing(staffing_plan)) and similar_sow.get('file_name'):
+                            blob_plan = fetch_staffing_from_blob(similar_sow['file_name'])
+                            if blob_plan:
+                                staffing_plan = blob_plan
+                        
                         if staffing_plan:
                             st.markdown("**Staffing Plan (Recommendation Source):**")
                             try:
-                                staffing_df = _normalize_staffing_plan_to_dataframe(staffing_plan)
-                                st.dataframe(staffing_df, use_container_width=True)
+                                # If structured dicts exist, show full schema columns
+                                if isinstance(staffing_plan, list) and staffing_plan and isinstance(staffing_plan[0], dict):
+                                    df = pd.DataFrame(staffing_plan)
+                                    # Ensure preferred column order and presence
+                                    preferred = ["name", "level", "title", "primary_role", "hours", "hours_pct"]
+                                    for c in preferred:
+                                        if c not in df.columns:
+                                            df[c] = ''
+                                    df = df[preferred]
+                                    st.dataframe(df, use_container_width=True)
+                                else:
+                                    staffing_df = _normalize_staffing_plan_to_dataframe(staffing_plan)
+                                    st.dataframe(staffing_df, use_container_width=True)
                             except Exception:
-                                staffing_df = pd.DataFrame(staffing_plan)
-                                st.dataframe(staffing_df, use_container_width=True)
+                                # Fallback to list rendering
+                                for j, staff in enumerate(staffing_plan, 1):
+                                    parsed = _parse_staffing_item_to_columns(staff)
+                                    st.write(f"{j}. {parsed.get('name','')} - {parsed.get('title','')} {parsed.get('allocation','')}")
                         else:
                             st.info("No staffing plan available in this historical SOW")
         
@@ -995,8 +1025,10 @@ def main():
                     if search_method == "Hybrid Search (Full Text + Parsed)":
                         # Initialize hybrid search service
                         hybrid_search_service = get_hybrid_search_service()
-                        results = hybrid_search_service.hybrid_vector_search(
+                        # Use service.search to enable hydration of structured staffing from blobs
+                        results = hybrid_search_service.search(
                             query=search_query,
+                            search_type="hybrid",
                             top=50,
                             filter_expression=filter_expression
                         )
@@ -1019,6 +1051,7 @@ def main():
                                     'scope_summary': doc.get('scope_summary', 'No summary'),
                                     'deliverables': doc.get('deliverables', []),
                                     'staffing_plan': doc.get('staffing_plan', []),
+                                    'staffing_plan_structured': doc.get('staffing_plan_structured'),
                                     'start_date': doc.get('start_date', ''),
                                     'end_date': doc.get('end_date', ''),
                                     'project_length': doc.get('project_length', ''),
@@ -1150,7 +1183,8 @@ def main():
                                     st.write(f"{j}. {deliverable}")
                         
                         # Staffing plan emphasized as table (fallback to blob if needed)
-                        staffing_plan = result.get('staffing_plan', [])
+                        # Prefer structured plan hydrated from blob if available
+                        staffing_plan = result.get('staffing_plan_structured') or result.get('staffing_plan', [])
                         # If not structured or missing, fetch from blob as a reliable source
                         if (not _looks_like_structured_staffing(staffing_plan)) and result.get('file_name'):
                             blob_plan = fetch_staffing_from_blob(result['file_name'])
@@ -1158,9 +1192,21 @@ def main():
                                 staffing_plan = blob_plan
                         if staffing_plan:
                             try:
-                                staffing_df = _normalize_staffing_plan_to_dataframe(staffing_plan)
-                                st.markdown("**Staffing Plan:**")
-                                st.dataframe(staffing_df, use_container_width=True)
+                                # If structured dicts exist, show full schema columns
+                                if isinstance(staffing_plan, list) and staffing_plan and isinstance(staffing_plan[0], dict):
+                                    st.markdown("**Staffing Plan:**")
+                                    df = pd.DataFrame(staffing_plan)
+                                    # Ensure preferred column order and presence
+                                    preferred = ["name", "level", "title", "primary_role", "hours", "hours_pct"]
+                                    for c in preferred:
+                                        if c not in df.columns:
+                                            df[c] = ''
+                                    df = df[preferred]
+                                    st.dataframe(df, use_container_width=True)
+                                else:
+                                    staffing_df = _normalize_staffing_plan_to_dataframe(staffing_plan)
+                                    st.markdown("**Staffing Plan:**")
+                                    st.dataframe(staffing_df, use_container_width=True)
                             except Exception:
                                 # Fallback to list rendering
                                 st.markdown("**Staffing Plan:**")

@@ -11,6 +11,8 @@ import asyncio
 import sys
 from pathlib import Path
 from dotenv import load_dotenv
+import os
+import argparse
 
 # Add the services directory to the path
 sys.path.append(str(Path(__file__).parent / "services"))
@@ -39,13 +41,31 @@ async def main():
         print(f"❌ Missing required environment variables: {', '.join(missing_vars)}")
         return
     
+    # CLI args
+    parser = argparse.ArgumentParser(description="SOW Data Extractor")
+    parser.add_argument('--file', dest='single_file', type=str, default='', help='Process only this file path')
+    parser.add_argument('--skip-uploads', dest='skip_uploads', action='store_true', help='Skip Azure Storage uploads')
+    args = parser.parse_args()
+
     # Initialize extractor service
     extractor = SOWExtractionService()
     extractor.set_progress_callback(progress_callback)
     await extractor.initialize()
     
-    # Process all SOWs
-    results = await extractor.process_all_sows()
+    # Process single file or all
+    results = []
+    if args.single_file:
+        target = Path(args.single_file)
+        if not target.is_absolute():
+            # Resolve relative to repo root
+            target = Path(__file__).parent.parent / target
+        if not target.exists():
+            print(f"❌ Target file not found: {target}")
+            return
+        res = await extractor.process_single_sow(target, skip_uploads=args.skip_uploads)
+        results = [res]
+    else:
+        results = await extractor.process_all_sows()
     
     if results:
         # Save to spreadsheet
@@ -78,7 +98,16 @@ async def main():
             for result in failed_results:
                 print(f"   {result.file_name}: {result.error}")
         
-        print(f"\n✅ Extraction complete! Results saved to: {filename}")
+        if not args.single_file:
+            print(f"\n✅ Extraction complete! Results saved to: {filename}")
+        else:
+            # For single file, pretty-print staffing plan for verification
+            r = results[0]
+            if r.success and r.data:
+                import json as _json
+                plan = r.data.get('staffing_plan', [])
+                print("\n📄 Staffing plan (minimal entries):")
+                print(_json.dumps(plan, indent=2, ensure_ascii=False))
     else:
         print("❌ No results to save")
 

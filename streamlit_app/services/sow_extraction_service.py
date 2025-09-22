@@ -15,16 +15,24 @@ from datetime import datetime, date
 from typing import Dict, List, Any, Optional, Callable
 from pathlib import Path
 from dataclasses import dataclass
+import csv
+import json
 
 from openai import AsyncOpenAI
 from azure.storage.blob.aio import BlobServiceClient
 from azure.identity.aio import DefaultAzureCredential
+_DOCINT_AVAILABLE = False
 try:
-    # Optional: Azure Document Intelligence service for PDF table extraction
-    from .document_intelligence_service import AzureDocumentIntelligenceService
+    # Preferred: relative import when part of package
+    from .document_intelligence_service import AzureDocumentIntelligenceService  # type: ignore
     _DOCINT_AVAILABLE = True
 except Exception:
-    _DOCINT_AVAILABLE = False
+    try:
+        # Fallback: absolute import when loaded as a top-level module
+        from document_intelligence_service import AzureDocumentIntelligenceService  # type: ignore
+        _DOCINT_AVAILABLE = True
+    except Exception:
+        _DOCINT_AVAILABLE = False
 
 
 @dataclass
@@ -296,6 +304,24 @@ class SOWExtractionService:
                 headers[c] = 'percentage'
             elif any(_re.fullmatch(r"\d{1,4}(?:[.,]\d+)?", v.replace(',', '')) for v in samples if v):
                 headers[c] = 'hours'
+
+        # Optional LLM safety net: if key signals are missing, try to remap headers via LLM
+        try:
+            need_allocation = not any(h in {'percentage', 'hours'} for h in headers)
+            need_role = not any(h in {'role', 'primary_role'} for h in headers)
+            need_name_or_title = not any(h in {'name', 'role', 'primary_role'} for h in headers)
+            llm_available = getattr(self, 'openai_client', None) is not None
+            if llm_available and (need_allocation or (need_role and need_name_or_title)):
+                mapped = self._llm_map_headers(headers_raw)
+                if isinstance(mapped, list) and len(mapped) == len(headers):
+                    headers = mapped
+                    # Rebuild index after override
+                    idx = {}
+                    for i, h in enumerate(headers):
+                        if h not in idx:
+                            idx[h] = i
+        except Exception:
+            pass
         def get(col: str, row: list) -> str:
             j = idx.get(col)
             if j is None or j >= len(row):
@@ -386,13 +412,252 @@ class SOWExtractionService:
                 'hours': _round(hours_val),
                 'hours_pct': _round(pct_val),
             })
-        return minimal
+        # Apply org chart normalization for titles and levels
+        try:
+            return self._apply_org_chart_normalization(minimal)
+        except Exception:
+            return minimal
+
+    def _apply_org_chart_normalization(self, minimal: list) -> list:
+        """Normalize titles to organization chart and infer numeric levels.
+
+        - Uses local CSV octagon_org_chart.csv at project root
+        - Falls back to LLM to expand abbreviations (e.g., VP → Vice President)
+        - Ensures level is a numeric string when possible
+        """
+        chart = self._get_org_chart_map()
+        normalized: list = []
+        for row in minimal:
+            raw_title = (row.get('title') or '').strip()
+            raw_level = (row.get('level') or '').strip()
+            primary_role = (row.get('primary_role') or '').strip()
+
+            candidate = raw_title or primary_role
+            normalized_title = None
+            level_num = None
+
+            # 1) Direct chart match
+            key = candidate.lower()
+            if key in chart:
+                normalized_title = chart[key]['title']
+                level_num = chart[key]['level']
+            else:
+                # 2) Heuristic expansions for common abbreviations BEFORE using LLM
+                abbrev_map = {
+                    'svp': 'Senior Vice President',
+                    'evp': 'Executive Vice President',
+                    'vp': 'Vice President',
+                    'ad': 'Account Director',
+                    'sam': 'Senior Account Manager',
+                    'sae': 'Senior Account Executive',
+                    'am': 'Account Manager',
+                    'ae': 'Account Executive',
+                    'gd': 'Group Director',
+                    'sd': 'Senior Director',
+                    'dir': 'Director',
+                    'mgr': 'Manager',
+                    'pm': 'Project Manager',
+                    'ap': 'Account Planner',
+                }
+                ck = candidate.replace('.', '').replace('/', ' ').strip().lower()
+                if ck in abbrev_map:
+                    heuristic_title = abbrev_map[ck]
+                    normalized_title = heuristic_title
+                    # If present in chart, adopt chart casing/level
+                    if heuristic_title.lower() in chart:
+                        normalized_title = chart[heuristic_title.lower()]['title']
+                        level_num = chart[heuristic_title.lower()]['level']
+                # 3) LLM normalization to chart key (fallback)
+                if normalized_title is None:
+                    try:
+                        mapped = self._llm_normalize_title(candidate)
+                        if mapped and mapped.lower() in chart:
+                            normalized_title = chart[mapped.lower()]['title']
+                            level_num = chart[mapped.lower()]['level']
+                        elif mapped:
+                            normalized_title = mapped
+                    except Exception:
+                        pass
+
+            # 4) Level from raw if numeric, else from chart if available, else fallback map
+            final_level = None
+            if raw_level.isdigit():
+                final_level = raw_level
+            elif level_num is not None:
+                final_level = str(level_num)
+            else:
+                # Fallback title→level mapping when chart lacks explicit entry
+                fallback_levels = {
+                    'executive vice president': 9,
+                    'senior vice president': 8,
+                    'vice president': 7,
+                    'group director': 6,
+                    'account director': 5,
+                    'senior account manager': 4,
+                    'account manager': 3,
+                    'senior account executive': 2,
+                    'account executive': 1,
+                }
+                key_title = (normalized_title or candidate).strip().lower()
+                if key_title in fallback_levels:
+                    final_level = str(fallback_levels[key_title])
+
+            out = dict(row)
+            if normalized_title:
+                out['title'] = normalized_title
+            if final_level:
+                out['level'] = final_level
+            normalized.append(out)
+
+        return normalized
+
+    def _get_org_chart_map(self) -> dict:
+        """Load and cache org chart mapping: title_lower -> {title, level}.
+
+        CSV expected columns include at minimum a title-like column and a level-like column.
+        We detect columns by header names containing 'title' and 'level' (case-insensitive).
+        """
+        if hasattr(self, '_org_chart_cache') and isinstance(self._org_chart_cache, dict):
+            return self._org_chart_cache
+        # Resolve project root from services/ path
+        project_root = Path(__file__).parents[2]
+        csv_path = project_root / 'octagon_org_chart.csv'
+        mapping: dict = {}
+        if not csv_path.exists():
+            self._org_chart_cache = mapping
+            return mapping
+        try:
+            with open(csv_path, 'r', newline='', encoding='utf-8') as f:
+                reader = csv.DictReader(f)
+                # Detect columns
+                cols = [c.strip() for c in (reader.fieldnames or [])]
+                def find_col(name_part: str) -> str:
+                    for c in cols:
+                        if name_part in c.lower():
+                            return c
+                    return ''
+                title_col = find_col('title') or find_col('role')
+                level_col = find_col('level')
+                canonical_col = find_col('normalized') or find_col('canonical') or title_col
+                for row in reader:
+                    title_val = (row.get(canonical_col) or row.get(title_col) or '').strip()
+                    level_val = (row.get(level_col) or '').strip()
+                    if not title_val:
+                        continue
+                    try:
+                        lvl = int(level_val) if level_val else None
+                    except Exception:
+                        lvl = None
+                    key = title_val.lower()
+                    if key not in mapping:
+                        mapping[key] = {'title': title_val, 'level': lvl}
+                    # Also map raw title if different casing
+                    raw_key = (row.get(title_col) or title_val).strip().lower()
+                    if raw_key and raw_key not in mapping:
+                        mapping[raw_key] = {'title': title_val, 'level': lvl}
+        except Exception:
+            mapping = {}
+        self._org_chart_cache = mapping
+        return mapping
+
+    def _llm_normalize_title(self, title_text: str) -> str:
+        """Use LLM to normalize a title to the closest org chart canonical title.
+
+        Returns a string (canonical title) or empty string on failure.
+        """
+        title_text = (title_text or '').strip()
+        if not title_text:
+            return ''
+        client = getattr(self, 'openai_client', None)
+        if client is None:
+            return ''
+        chart = self._get_org_chart_map()
+        options = sorted({v['title'] for v in chart.values() if v.get('title')})
+        if not options:
+            return ''
+        try:
+            schema = {
+                "type": "object",
+                "properties": {
+                    "title": {"type": "string"}
+                },
+                "required": ["title"]
+            }
+            sys_prompt = (
+                "Given a role/title string, select the closest canonical title from this list. "
+                "Return only the chosen title as {\"title\": \"...\"}."
+            )
+            user_prompt = (
+                "Candidate: " + title_text + "\n"
+                "Options: " + ", ".join(options[:200])
+            )
+            resp = client.chat.completions.create(
+                model="gpt-5-mini",
+                messages=[
+                    {"role": "system", "content": sys_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+                response_format={"type": "json_schema", "json_schema": {"name": "normalize_title", "schema": schema}},
+            )
+            payload = json.loads(resp.choices[0].message.content)
+            return (payload.get('title') or '').strip()
+        except Exception:
+            return ''
+
+    def _llm_map_headers(self, headers_raw: list) -> list:
+        """Use LLM to map raw header strings to canonical keys.
+
+        Returns a list of canonical keys in the same order as headers_raw.
+        Canonical keys set: name, role, primary_role, level, location, workstream, percentage, hours, ignore
+        """
+        try:
+            client = getattr(self, 'openai_client', None)
+            if client is None:
+                return headers_raw
+            schema = {
+                "type": "object",
+                "properties": {
+                    "mapped": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "name", "role", "primary_role", "level", "location",
+                                "workstream", "percentage", "hours", "ignore"
+                            ]
+                        }
+                    }
+                },
+                "required": ["mapped"]
+            }
+            sys_prompt = (
+                "Map each header to a canonical key for staffing tables. "
+                "Valid keys: name, role, primary_role, level, location, workstream, percentage, hours, ignore. "
+                "Use percentage for % time/FTE columns; hours for time allocations in hours."
+            )
+            user_prompt = "Headers: " + json.dumps([str(h or "").strip() for h in headers_raw])
+            resp = client.chat.completions.create(
+                model="gpt-5-mini",
+                messages=[
+                    {"role": "system", "content": sys_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+                response_format={"type": "json_schema", "json_schema": {"name": "map_headers", "schema": schema}},
+            )
+            payload = json.loads(resp.choices[0].message.content)
+            mapped = payload.get("mapped")
+            if isinstance(mapped, list) and len(mapped) == len(headers_raw):
+                return mapped
+        except Exception:
+            return headers_raw
+        return headers_raw
 
     def _extract_staffing_via_document_intelligence(self, file_path: Path) -> Dict[str, Any]:
         """Use Azure Document Intelligence for PDFs to extract staffing entries and minimal schema."""
         if not _DOCINT_AVAILABLE or file_path.suffix.lower() != '.pdf':
             return {"entries": [], "minimal": []}
         try:
+            self._update_progress("di_extraction", f"Running Document Intelligence on {file_path.name}...", 55)
             di = AzureDocumentIntelligenceService()
             analysis = di.analyze_layout(file_path)
             tables = analysis.get('tables', [])
@@ -405,8 +670,10 @@ class SOWExtractionService:
                 if entries:
                     all_entries.extend(entries)
             minimal = self._to_minimal_staffing(all_entries)
+            self._update_progress("di_extraction", f"DI found {len(all_entries)} rows across {len(tables)} tables", 58)
             return {"entries": all_entries, "minimal": minimal}
-        except Exception:
+        except Exception as e:
+            self._update_progress("di_extraction", f"DI failed: {e}", 58)
             return {"entries": [], "minimal": []}
     
     def extract_text_from_file(self, file_path: Path) -> str:

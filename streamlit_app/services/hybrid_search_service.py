@@ -19,6 +19,10 @@ import asyncio
 from typing import Dict, List, Optional, Any
 from pathlib import Path
 from dotenv import load_dotenv
+from azure.identity.aio import DefaultAzureCredential
+from azure.storage.blob.aio import BlobServiceClient
+from azure.identity import DefaultAzureCredential as SyncDefaultAzureCredential
+from azure.storage.blob import BlobServiceClient as SyncBlobServiceClient
 
 
 class HybridSearchService:
@@ -32,6 +36,7 @@ class HybridSearchService:
         self.openai_deployment = None
         self.index_name = "octagon-sows-hybrid"
         self._load_environment()
+        self._blob_client = None
     
     def _load_environment(self):
         """Load environment variables"""
@@ -44,6 +49,7 @@ class HybridSearchService:
         self.openai_api_key = os.getenv('AZURE_OPENAI_API_KEY')
         self.openai_endpoint = os.getenv('AZURE_OPENAI_ENDPOINT')
         self.openai_deployment = os.getenv('AOAI_DEPLOYMENT')
+        self.storage_account_url = os.getenv('AZURE_STORAGE_ACCOUNT_URL')
         
         if not all([self.search_endpoint, self.search_key, self.openai_api_key, 
                    self.openai_endpoint, self.openai_deployment]):
@@ -51,6 +57,63 @@ class HybridSearchService:
         
         # Remove trailing slash if present
         self.search_endpoint = self.search_endpoint.rstrip('/')
+
+    async def _ensure_blob_client(self):
+        if self._blob_client is None and self.storage_account_url:
+            cred = DefaultAzureCredential()
+            self._blob_client = BlobServiceClient(account_url=self.storage_account_url, credential=cred)
+
+    async def _download_parsed_json(self, file_name: str) -> Optional[Dict[str, Any]]:
+        try:
+            await self._ensure_blob_client()
+            if not self._blob_client:
+                return None
+            base = file_name.replace('.pdf', '').replace('.docx', '')
+            blob_name = f"{base}_parsed.json"
+            bc = self._blob_client.get_blob_client(container="parsed", blob=blob_name)
+            data = await bc.download_blob()
+            content = await data.readall()
+            return json.loads(content.decode('utf-8'))
+        except Exception:
+            return None
+
+    def _hydrate_structured_staffing(self, docs: List[Dict[str, Any]]):
+        """Attach structured staffing from parsed blobs to result docs.
+        Uses synchronous blob download to avoid asyncio event loop conflicts in Streamlit.
+        """
+        try:
+            # Initialize synchronous blob client
+            if not hasattr(self, '_sync_blob_client') and self.storage_account_url:
+                cred = SyncDefaultAzureCredential()
+                self._sync_blob_client = SyncBlobServiceClient(account_url=self.storage_account_url, credential=cred)
+            
+            if not self._sync_blob_client:
+                return
+                
+            for d in docs:
+                fn = (d.get('file_name') or d.get('id') or '').strip()
+                if not fn:
+                    continue
+                
+                try:
+                    # Use synchronous blob download
+                    base = fn.replace('.pdf', '').replace('.docx', '')
+                    blob_name = f"{base}_parsed.json"
+                    blob_client = self._sync_blob_client.get_blob_client(container="parsed", blob=blob_name)
+                    
+                    # Download blob content synchronously
+                    blob_data = blob_client.download_blob()
+                    content = blob_data.readall()
+                    parsed = json.loads(content.decode('utf-8'))
+                    
+                    if isinstance(parsed, dict) and isinstance(parsed.get('staffing_plan'), list):
+                        d['staffing_plan_structured'] = parsed['staffing_plan']
+                except Exception:
+                    # If blob download fails, continue without structured data
+                    continue
+        except Exception:
+            # If blob client initialization fails, continue without hydration
+            pass
     
     async def get_query_embedding(self, query: str) -> List[float]:
         """Get vector embedding for search query"""
@@ -339,15 +402,24 @@ class HybridSearchService:
     ) -> Dict[str, Any]:
         """Main search method with different search types"""
         if search_type == "hybrid":
-            return self.hybrid_vector_search(query, top=top, skip=skip, filter_expression=filter_expression)
+            result = self.hybrid_vector_search(query, top=top, skip=skip, filter_expression=filter_expression)
         elif search_type == "full_text":
-            return self.full_text_vector_search(query, top=top, skip=skip, filter_expression=filter_expression)
+            result = self.full_text_vector_search(query, top=top, skip=skip, filter_expression=filter_expression)
         elif search_type == "parsed":
-            return self.parsed_data_vector_search(query, top=top, skip=skip, filter_expression=filter_expression)
+            result = self.parsed_data_vector_search(query, top=top, skip=skip, filter_expression=filter_expression)
         elif search_type == "semantic":
-            return self.semantic_search(query, top=top, skip=skip, filter_expression=filter_expression)
+            result = self.semantic_search(query, top=top, skip=skip, filter_expression=filter_expression)
         else:
             return {"error": f"Unknown search type: {search_type}"}
+
+        # Hydrate structured staffing JSON alongside searchable flattened strings
+        try:
+            docs = result.get('value', []) if isinstance(result, dict) else []
+            if docs:
+                self._hydrate_structured_staffing(docs)
+        except Exception:
+            pass
+        return result
 
 
 def get_hybrid_search_service() -> HybridSearchService:

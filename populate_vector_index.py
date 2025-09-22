@@ -128,11 +128,16 @@ class VectorIndexPopulator:
     def prepare_document_for_vector_index(self, json_data, content_vector, scope_vector, deliverables_vector):
         """Prepare a JSON document for the vector index"""
         # Use deterministic ID: parsed blob's file_name
+        import re
         file_name = json_data.get("file_name") or ""
         doc_id = file_name if file_name else (json_data.get("project_title", "") or json_data.get("client_name", ""))
         if not doc_id:
             import uuid
             doc_id = str(uuid.uuid4())
+        # Sanitize id: Azure Search keys allow letters, digits, _, -, =
+        # Strip extension and replace invalid chars with '_'
+        doc_id = re.sub(r"\.[A-Za-z0-9]+$", "", doc_id)
+        doc_id = re.sub(r"[^A-Za-z0-9_\-=]", "_", doc_id)
         
         # Prepare the document
         document = {

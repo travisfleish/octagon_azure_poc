@@ -154,11 +154,15 @@ class HybridIndexPopulator:
     def prepare_document_for_hybrid_index(self, json_data, raw_content, embeddings):
         """Prepare a document for the hybrid index"""
         # Use deterministic ID so re-populations overwrite instead of duplicating
+        import re
         file_name = json_data.get("file_name", "")
         doc_id = file_name or json_data.get("project_title", "") or json_data.get("client_name", "")
         if not doc_id:
             import uuid
             doc_id = str(uuid.uuid4())
+        # Sanitize id: allow letters, digits, _, -, = and remove extension
+        doc_id = re.sub(r"\.[A-Za-z0-9]+$", "", doc_id)
+        doc_id = re.sub(r"[^A-Za-z0-9_\-=]", "_", doc_id)
         
         # Prepare the document
         document = {
